@@ -1,0 +1,167 @@
+#!/bin/bash
+# Tests du protocole : lance un vrai serveur et lui parle avec des sockets brutes.
+#   tests/test_proto.sh            (ou : make test)
+#   BIN=bin-debug tests/test_proto.sh   pour tester la version compilee avec ASan/UBSan
+#
+# On utilise /dev/tcp de bash plutot que nc pour controler finement ce qu'on envoie
+# (morceaux de lignes, rafales) : c'est le but de ces tests.
+
+BIN=${BIN:-bin}
+PORT=$((20000 + RANDOM % 20000))
+LOG=$(mktemp)
+NB_OK=0
+NB_KO=0
+
+cleanup() { kill "$SERVEUR" 2>/dev/null; rm -f "$LOG"; }
+trap cleanup EXIT
+
+"$BIN/awale_serveur" "$PORT" >"$LOG" 2>&1 &
+SERVEUR=$!
+# attend que le serveur ecoute
+for _ in $(seq 50); do
+  (exec 3<>/dev/tcp/127.0.0.1/$PORT) 2>/dev/null && break
+  sleep 0.1
+done
+
+# ---- petites fonctions utilitaires ----
+
+# ouvre une connexion ; le numero de descripteur est place dans la variable $1
+ouvrir() { local fd; exec {fd}<>/dev/tcp/127.0.0.1/$PORT; printf -v "$1" '%s' "$fd"; }
+# ferme la connexion dont le descripteur est dans la variable dont le nom est $1
+fermer() { eval "exec ${!1}>&-"; }
+# envoie le texte tel quel ($2 interprete par printf %b : \n, \r...)
+envoyer() { printf '%b' "$2" >&"$1"; }
+# lit des lignes jusqu'a en trouver une contenant $2 (3 s max) ; la ligne est dans $LIGNE
+attendre() {
+  local l
+  while read -r -t 3 -u "$1" l 2>/dev/null; do
+    l=${l%$'\r'}
+    if [[ $l == *"$2"* ]]; then LIGNE=$l; return 0; fi
+  done
+  return 1
+}
+# 0 si la connexion est fermee par le serveur dans les 3 secondes (fin de fichier ou reset)
+attendre_fermeture() {
+  local l st
+  while true; do
+    read -r -t 3 -u "$1" l 2>/dev/null; st=$?
+    [ $st -eq 0 ] && continue
+    [ $st -le 128 ]   # 1 = fin de fichier / erreur ; > 128 = delai ecoule
+    return
+  done
+}
+serveur_vivant() { kill -0 "$SERVEUR" 2>/dev/null; }
+
+# verifier "description" commande... : compte un succes si la commande renvoie 0
+verifier() {
+  local desc=$1; shift
+  if "$@"; then NB_OK=$((NB_OK + 1)); echo "  ok   $desc"
+  else NB_KO=$((NB_KO + 1)); echo "  ECHEC $desc"; fi
+}
+
+# ---- tests ----
+
+echo "== inscription =="
+ouvrir A; attendre $A "EVT HELLO"; verifier "message de bienvenue" true
+envoyer $A "WHO\n";               verifier "WHO avant NICK refuse" attendre $A "ERR etat_invalide"
+envoyer $A "NICK\n";              verifier "NICK sans pseudo : syntaxe" attendre $A "ERR syntaxe"
+envoyer $A "NICK a b\n";          verifier "pseudo avec espace invalide" attendre $A "ERR pseudo_invalide"
+envoyer $A "NICK a-b\n";          verifier "pseudo avec tiret invalide" attendre $A "ERR pseudo_invalide"
+envoyer $A "NICK abcdefghijklmnopq\n"; verifier "pseudo de 17 caracteres invalide" attendre $A "ERR pseudo_invalide"
+envoyer $A "nick alice\n";        verifier "commande en minuscules acceptee" attendre $A "OK NICK alice"
+envoyer $A "NICK autre\n";        verifier "deuxieme NICK refuse" attendre $A "ERR deja_inscrit"
+
+ouvrir B; attendre $B "EVT HELLO"
+envoyer $B "NICK ALICE\n";        verifier "pseudo deja pris (casse ignoree)" attendre $B "ERR pseudo_pris"
+envoyer $B "NICK bob\n";          verifier "bob s'inscrit" attendre $B "OK NICK bob"
+verifier "alice voit arriver bob" attendre $A "EVT JOIN bob"
+
+echo "== liste des joueurs =="
+envoyer $B "WHO\n";               verifier "WHO contient alice et bob" attendre $B "OK WHO"
+[[ $LIGNE == *alice:libre* && $LIGNE == *bob:libre* ]] && verifier "WHO : alice:libre bob:libre" true || verifier "WHO : alice:libre bob:libre" false
+envoyer $B "HELP\n";              verifier "HELP liste les commandes" attendre $B "OK HELP NICK WHO HELP QUIT"
+
+echo "== commandes invalides =="
+envoyer $A "DANSER\n";            verifier "commande inconnue" attendre $A "ERR commande_inconnue"
+envoyer $A "\n   \n";             envoyer $A "WHO\n"
+verifier "lignes vides ignorees" attendre $A "OK WHO"
+envoyer $A "WHO\r\n";             verifier "fin de ligne \\r\\n acceptee" attendre $A "OK WHO"
+
+echo "== flux TCP : lignes coupees et rafales =="
+ouvrir C; attendre $C "EVT HELLO"
+envoyer $C "NI"; sleep 0.2; envoyer $C "CK ca"; sleep 0.2; envoyer $C "rol\nWH"; sleep 0.2
+verifier "NICK coupe en 3 morceaux" attendre $C "OK NICK carol"
+envoyer $C "O\n";                 verifier "WHO coupe entre deux envois" attendre $C "OK WHO"
+envoyer $C "WHO\nWHO\nHELP\nDANSER\n"
+verifier "rafale : 1re reponse" attendre $C "OK WHO"
+verifier "rafale : 2e reponse"  attendre $C "OK WHO"
+verifier "rafale : 3e reponse"  attendre $C "OK HELP"
+verifier "rafale : 4e reponse"  attendre $C "ERR commande_inconnue"
+
+echo "== lignes trop longues =="
+ouvrir D; attendre $D "EVT HELLO"
+L1023=$(head -c 1023 /dev/zero | tr '\0' 'x')
+envoyer $D "$L1023\n";            verifier "ligne de 1023 caracteres : acceptee" attendre $D "ERR commande_inconnue"
+L2000=$(head -c 2000 /dev/zero | tr '\0' 'x')
+envoyer $D "$L2000";              verifier "2000 caracteres sans \\n : refuse" attendre $D "ERR ligne_trop_longue"
+verifier "...puis connexion fermee" attendre_fermeture $D
+verifier "serveur toujours vivant" serveur_vivant
+
+echo "== deconnexions =="
+envoyer $C "QUIT\n";              verifier "QUIT : OK QUIT" attendre $C "OK QUIT"
+verifier "QUIT : connexion fermee" attendre_fermeture $C
+verifier "alice voit partir carol" attendre $A "EVT LEAVE carol"
+# depart brutal : fermeture sans QUIT
+ouvrir E; attendre $E "EVT HELLO"; envoyer $E "NICK eve\n"; attendre $E "OK NICK eve"
+attendre $A "EVT JOIN eve"
+fermer E
+verifier "depart brutal : alice voit partir eve" attendre $A "EVT LEAVE eve"
+# l'ancien pseudo est de nouveau libre
+ouvrir F; attendre $F "EVT HELLO"; envoyer $F "NICK eve\n"
+verifier "pseudo reutilisable apres depart" attendre $F "OK NICK eve"
+fermer F; attendre $A "EVT LEAVE eve"
+# connexion fermee sans rien envoyer
+ouvrir G; fermer G; sleep 0.2
+verifier "client muet qui part : serveur vivant" serveur_vivant
+
+echo "== client lent qui ne lit jamais =="
+ouvrir H; attendre $H "EVT HELLO"; envoyer $H "NICK lent\n"; attendre $H "OK NICK lent"
+attendre $A "EVT JOIN lent"
+# 400000 commandes envoyees sans jamais lire les reponses : les files se remplissent
+yes HELP | head -n 400000 >&$H 2>/dev/null
+sleep 0.5
+verifier "alice voit partir le client lent (deconnecte par le serveur)" attendre $A "EVT LEAVE lent"
+verifier "serveur toujours vivant" serveur_vivant
+fermer H
+
+echo "== serveur plein =="
+sleep 0.5
+PLEINS=()
+for k in $(seq 1 70); do ouvrir "P$k"; PLEINS+=("P$k"); done
+NB_PLEIN=0
+for p in "${PLEINS[@]}"; do
+  read -r -t 2 -u "${!p}" l 2>/dev/null   # premiere ligne : bienvenue, ou refus
+  [[ $l == *serveur_plein* ]] && NB_PLEIN=$((NB_PLEIN + 1))
+done
+verifier "au-dela de 64 clients : ERR serveur_plein ($NB_PLEIN refus)" test "$NB_PLEIN" -ge 1
+verifier "serveur toujours vivant" serveur_vivant
+for p in "${PLEINS[@]}"; do fermer "$p"; done
+sleep 0.5
+ouvrir Z; verifier "nouvelles connexions acceptees apres liberation" attendre $Z "EVT HELLO"
+fermer Z
+
+echo "== client interactif (awale_client) =="
+SORTIE=$(printf 'NICK zed\nWHO\nDANSER\n' | timeout 5 "$BIN/awale_client" 127.0.0.1 "$PORT")
+verifier "client : inscription affichee" grep -q "inscrit sous le pseudo zed" <<<"$SORTIE"
+verifier "client : liste des joueurs affichee" grep -q "  - zed (libre)" <<<"$SORTIE"
+verifier "client : erreur traduite" grep -q "Erreur : commande inconnue" <<<"$SORTIE"
+verifier "client : se termine quand le serveur ferme" grep -q "Connexion fermee par le serveur" <<<"$SORTIE"
+
+echo "== arret propre =="
+kill -INT "$SERVEUR"; wait "$SERVEUR"; CODE=$?
+verifier "serveur arrete par CTRL-C avec le code 0" test "$CODE" -eq 0
+verifier "aucune erreur memoire (ASan/UBSan) dans les logs" bash -c "! grep -qE 'AddressSanitizer|runtime error' '$LOG'"
+
+echo
+echo "$NB_OK succes, $NB_KO echec(s)"
+[ "$NB_KO" -eq 0 ]

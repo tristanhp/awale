@@ -1,0 +1,10 @@
+obj/
+obj-debug/
+bin/
+bin-debug/
+tests/bin/
+*.o
+*.d
+*.tmp
+parties_sauvegardees/
+docs/
