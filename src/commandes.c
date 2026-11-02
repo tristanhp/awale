@@ -30,10 +30,10 @@ void cmd_nick(int i, char *args)
     return;
   }
 
-  snprintf(clients[i].pseudo, sizeof(clients[i].pseudo), "%s", args);
+  snprintf(clients[i].name, sizeof(clients[i].name), "%s", args);
   clients[i].etat = ETAT_LIBRE;
-  client_envoyer(i, "OK NICK %s", clients[i].pseudo);
-  clients_diffuser(i, "EVT JOIN %s", clients[i].pseudo);
+  client_envoyer(i, "OK NICK %s", clients[i].name);
+  clients_diffuser(i, "EVT JOIN %s", clients[i].name);
 }
 
 void cmd_who(int i, char *args)
@@ -45,9 +45,9 @@ void cmd_who(int i, char *args)
   pos += (size_t)snprintf(msg, sizeof(msg), "OK WHO");
   for (int k = 0; k < MAX_CLIENTS; k++)
   {
-    if (clients[k].fd < 0 || !(clients[k].etat & ETAT_INSCRIT))
+    if (clients[k].sock < 0 || !(clients[k].etat & ETAT_INSCRIT))
       continue;
-    int r = snprintf(msg + pos, sizeof(msg) - pos, " %s:%s", clients[k].pseudo, etat_nom(clients[k].etat));
+    int r = snprintf(msg + pos, sizeof(msg) - pos, " %s:%s", clients[k].name, etat_nom(clients[k].etat));
     if (r < 0 || (size_t)r >= sizeof(msg) - pos)
     {
       msg[pos] = '\0'; /* plus de place : on envoie ce qui tient (ne devrait pas arriver avec 64 clients) */
@@ -76,5 +76,5 @@ void cmd_quit(int i, char *args)
 void evenement_deconnexion(int i)
 {
   if (clients[i].etat & ETAT_INSCRIT)
-    clients_diffuser(i, "EVT LEAVE %s", clients[i].pseudo);
+    clients_diffuser(i, "EVT LEAVE %s", clients[i].name);
 }

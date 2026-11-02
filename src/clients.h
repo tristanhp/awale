@@ -7,6 +7,7 @@
 #ifndef CLIENTS_H
 #define CLIENTS_H
 
+#include "server.h"
 #include "tampon.h"
 
 #define MAX_CLIENTS 64
@@ -21,9 +22,9 @@
 
 typedef struct
 {
-  int fd;   /* -1 = case libre */
+  SOCKET sock; /* -1 = case libre */
   int etat; /* un seul des bits ETAT_* */
-  char pseudo[PSEUDO_MAX + 1];
+  char name[PSEUDO_MAX + 1]; /* pseudo */
   TamponEntree in;
   FileSortie out;
   int a_fermer; /* 1 = a deconnecter a la fin du tour de boucle de select */
@@ -34,7 +35,7 @@ extern Client clients[MAX_CLIENTS];
 void clients_init(void);
 
 /* occupe une case libre pour la socket fd ; retourne l'indice, ou -1 si la table est pleine */
-int clients_ajouter(int fd);
+int clients_ajouter(SOCKET sock);
 
 /* ferme la socket et libere la case */
 void clients_retirer(int i);

@@ -13,15 +13,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/select.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <netdb.h>
 #include <errno.h>
 #include <signal.h>
-#include <unistd.h>
+#include "server.h"
 #include "tampon.h"
 
 /* ecrit toute la chaine sur la socket (write peut n'ecrire qu'une partie) ; 0 si OK, -1 sinon */

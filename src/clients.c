@@ -11,9 +11,9 @@ Client clients[MAX_CLIENTS];
 
 static void vider_case(Client *c)
 {
-  c->fd = -1;
+  c->sock = -1;
   c->etat = ETAT_CONNECTE;
-  c->pseudo[0] = '\0';
+  c->name[0] = '\0';
   entree_init(&c->in);
   sortie_init(&c->out);
   c->a_fermer = 0;
@@ -25,14 +25,14 @@ void clients_init(void)
     vider_case(&clients[i]);
 }
 
-int clients_ajouter(int fd)
+int clients_ajouter(SOCKET sock)
 {
   for (int i = 0; i < MAX_CLIENTS; i++)
   {
-    if (clients[i].fd == -1)
+    if (clients[i].sock == -1)
     {
       vider_case(&clients[i]);
-      clients[i].fd = fd;
+      clients[i].sock = sock;
       return i;
     }
   }
@@ -41,15 +41,15 @@ int clients_ajouter(int fd)
 
 void clients_retirer(int i)
 {
-  if (clients[i].fd >= 0)
-    close(clients[i].fd);
+  if (clients[i].sock >= 0)
+    close(clients[i].sock);
   vider_case(&clients[i]);
 }
 
 int clients_chercher_pseudo(const char *pseudo)
 {
   for (int i = 0; i < MAX_CLIENTS; i++)
-    if (clients[i].fd >= 0 && clients[i].pseudo[0] != '\0' && strcasecmp(clients[i].pseudo, pseudo) == 0)
+    if (clients[i].sock >= 0 && clients[i].name[0] != '\0' && strcasecmp(clients[i].name, pseudo) == 0)
       return i;
   return -1;
 }
@@ -85,7 +85,7 @@ const char *etat_nom(int etat)
 /* envoi d'un message deja formate */
 static void envoyer_texte(int i, const char *texte)
 {
-  if (clients[i].fd < 0 || clients[i].a_fermer)
+  if (clients[i].sock < 0 || clients[i].a_fermer)
     return;
   if (sortie_ajouter(&clients[i].out, texte) < 0)
     clients[i].a_fermer = 1; /* file pleine : ce client ne lit plus, on le deconnecte */
@@ -109,6 +109,6 @@ void clients_diffuser(int sauf, const char *fmt, ...)
   vsnprintf(msg, sizeof(msg), fmt, ap);
   va_end(ap);
   for (int i = 0; i < MAX_CLIENTS; i++)
-    if (i != sauf && clients[i].fd >= 0 && (clients[i].etat & ETAT_INSCRIT))
+    if (i != sauf && clients[i].sock >= 0 && (clients[i].etat & ETAT_INSCRIT))
       envoyer_texte(i, msg);
 }

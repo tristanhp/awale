@@ -94,7 +94,7 @@ src/tampon.[ch]      tampon de lignes en entrée, file d'envoi en sortie (taille
 src/clients.[ch]     table des clients, pseudos, envoi de messages
 src/protocole.[ch]   table des commandes + dispatcher
 src/commandes.[ch]   une fonction par commande
-src/serveur.c        socket d'écoute + boucle select
+src/server.[ch]       portabilité réseau, socket d’écoute + boucle select (structure de la V2)
 src/client.c         client : select sur le clavier et la socket
 ```
 
