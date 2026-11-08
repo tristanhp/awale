@@ -1,7 +1,7 @@
 # Makefile du serveur de jeu Awale
 #   make              compile le serveur et le client (bin/)
 #   make debug        meme chose avec -g et les detecteurs d'erreurs memoire (bin-debug/)
-#   make test         lance les tests du moteur et du protocole
+#   make test         lance les tests du moteur, du protocole et des parties
 #   make test-debug   idem, mais programmes compiles en mode debug (ASan/UBSan)
 #   make clean        supprime tout ce qui est genere
 
@@ -50,6 +50,7 @@ tests/bin/test_awale: tests/test_awale.c src/awale.c src/awale.h | tests/bin
 test: all tests/bin/test_awale
 	tests/bin/test_awale
 	BIN=$(BINDIR) tests/test_proto.sh
+	BIN=$(BINDIR) tests/test_parties.sh
 
 test-debug:
 	$(MAKE) BUILD=debug test
