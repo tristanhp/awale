@@ -5,7 +5,7 @@ Projet de programmation répartie (INSA Lyon, 4IF) : un serveur TCP qui fait jou
 
 **Avancement : séance 2 (étapes 0 à 4).** Moteur de jeu testé, serveur et client avec pseudos,
 liste des joueurs, défis et parties jouées avec plateau ASCII. L'observation des parties
-(étape 5) vient ensuite (voir `docs/superpowers/plans/`).
+(étape 5) vient ensuite.
 
 | Étape | Contenu | État |
 |---|---|---|
@@ -134,7 +134,6 @@ src/client.c         client : select sur le clavier et la socket, affichage du p
 dans `commandes.h`, ajouter une ligne `{ "XXX", cmd_xxx, ETAT_... }` dans la table de
 `protocole.c`. `HELP` la listera automatiquement.
 
-Design complet : `docs/superpowers/specs/2026-11-01-awale-design.md`.
 
 ## Robustesse (ce qui est traité et testé)
 
