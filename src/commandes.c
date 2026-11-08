@@ -73,8 +73,83 @@ void cmd_quit(int i, char *args)
   clients[i].a_fermer = 1; /* le serveur essaiera d'envoyer le "OK QUIT" avant de fermer */
 }
 
+void cmd_challenge(int i, char *args)
+{
+  if (args[0] == '\0')
+  {
+    client_envoyer(i, "ERR syntaxe");
+    return;
+  }
+
+  int cible = clients_chercher_pseudo(args);
+  if (cible < 0 || !(clients[cible].etat & ETAT_INSCRIT))
+  {
+    client_envoyer(i, "ERR joueur_inconnu");
+    return;
+  }
+  if (cible == i)
+  {
+    client_envoyer(i, "ERR defi_soi");
+    return;
+  }
+  if (clients[cible].etat != ETAT_LIBRE)
+  {
+    client_envoyer(i, "ERR joueur_occupe");
+    return;
+  }
+
+  clients[i].etat = ETAT_DEFI_ENVOYE;
+  clients[i].adversaire = cible;
+  clients[cible].etat = ETAT_DEFI_RECU;
+  clients[cible].adversaire = i;
+  client_envoyer(i, "OK CHALLENGE %s", clients[cible].name);
+  client_envoyer(cible, "EVT CHALLENGE %s", clients[i].name);
+}
+
+/* remet les deux joueurs d'un defi a l'etat libre */
+static void defi_terminer(int i)
+{
+  int autre = clients[i].adversaire;
+  clients[i].etat = ETAT_LIBRE;
+  clients[i].adversaire = -1;
+  if (autre >= 0)
+  {
+    clients[autre].etat = ETAT_LIBRE;
+    clients[autre].adversaire = -1;
+  }
+}
+
+void cmd_decline(int i, char *args)
+{
+  (void)args;
+  int defiant = clients[i].adversaire;
+  defi_terminer(i);
+  client_envoyer(i, "OK DECLINE");
+  client_envoyer(defiant, "EVT DECLINED %s", clients[i].name);
+}
+
+void cmd_cancel(int i, char *args)
+{
+  (void)args;
+  int defie = clients[i].adversaire;
+  defi_terminer(i);
+  client_envoyer(i, "OK CANCEL");
+  client_envoyer(defie, "EVT CANCELLED %s", clients[i].name);
+}
+
 void evenement_deconnexion(int i)
 {
+  /* defi en cours : l'autre joueur redevient libre et en est informe */
+  if (clients[i].etat == ETAT_DEFI_ENVOYE || clients[i].etat == ETAT_DEFI_RECU)
+  {
+    int autre = clients[i].adversaire;
+    int envoye = (clients[i].etat == ETAT_DEFI_ENVOYE);
+    defi_terminer(i);
+    if (envoye)
+      client_envoyer(autre, "EVT CANCELLED %s", clients[i].name);
+    else
+      client_envoyer(autre, "EVT DECLINED %s", clients[i].name);
+  }
   if (clients[i].etat & ETAT_INSCRIT)
     clients_diffuser(i, "EVT LEAVE %s", clients[i].name);
 }

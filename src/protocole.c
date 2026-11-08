@@ -15,6 +15,9 @@ static const Commande commandes[] = {
     {"WHO", cmd_who, ETAT_INSCRIT},
     {"HELP", cmd_help, ETAT_TOUS},
     {"QUIT", cmd_quit, ETAT_TOUS},
+    {"CHALLENGE", cmd_challenge, ETAT_LIBRE},
+    {"DECLINE", cmd_decline, ETAT_DEFI_RECU},
+    {"CANCEL", cmd_cancel, ETAT_DEFI_ENVOYE},
 };
 
 #define NB_COMMANDES (sizeof(commandes) / sizeof(commandes[0]))

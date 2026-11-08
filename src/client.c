@@ -50,6 +50,9 @@ static const char *texte_erreur(const char *code)
       {"syntaxe", "commande mal formee"},
       {"commande_inconnue", "commande inconnue (tapez HELP)"},
       {"etat_invalide", "commande impossible dans votre situation actuelle"},
+      {"joueur_inconnu", "aucun joueur connecte sous ce pseudo"},
+      {"defi_soi", "vous ne pouvez pas vous defier vous-meme"},
+      {"joueur_occupe", "ce joueur est deja en defi ou en partie"},
       {"serveur_plein", "le serveur est plein"},
       {"ligne_trop_longue", "ligne trop longue, deconnexion"},
   };
@@ -85,6 +88,18 @@ static void afficher_message(char *ligne)
     printf("Au revoir.\n");
   else if (strncmp(ligne, "EVT HELLO ", 10) == 0)
     printf("%s\n", ligne + 10);
+  else if (strncmp(ligne, "OK CHALLENGE ", 13) == 0)
+    printf("Defi envoye a %s, en attente de sa reponse.\n", ligne + 13);
+  else if (strncmp(ligne, "EVT CHALLENGE ", 14) == 0)
+    printf("*** %s vous defie !\n", ligne + 14);
+  else if (strcmp(ligne, "OK DECLINE") == 0)
+    printf("Defi refuse.\n");
+  else if (strcmp(ligne, "OK CANCEL") == 0)
+    printf("Defi retire.\n");
+  else if (strncmp(ligne, "EVT DECLINED ", 13) == 0)
+    printf("*** %s a refuse votre defi (ou est parti)\n", ligne + 13);
+  else if (strncmp(ligne, "EVT CANCELLED ", 14) == 0)
+    printf("*** %s a retire son defi (ou est parti)\n", ligne + 14);
   else if (strncmp(ligne, "EVT JOIN ", 9) == 0)
     printf("*** %s vient de se connecter\n", ligne + 9);
   else if (strncmp(ligne, "EVT LEAVE ", 10) == 0)

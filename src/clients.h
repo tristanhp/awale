@@ -16,8 +16,12 @@
 
 /* etats d'un client : un bit chacun, pour qu'une commande indique un MASQUE d'etats autorises */
 #define ETAT_CONNECTE (1 << 0)    /* connecte, pas encore de pseudo */
-#define ETAT_LIBRE (1 << 1)       /* pseudo choisi, disponible */
-#define ETAT_INSCRIT (ETAT_LIBRE) /* a un pseudo (s'etendra : en partie...) */
+#define ETAT_LIBRE (1 << 1)        /* pseudo choisi, disponible */
+#define ETAT_DEFI_ENVOYE (1 << 2)  /* a defie quelqu'un, attend sa reponse */
+#define ETAT_DEFI_RECU (1 << 3)    /* a ete defie, doit repondre */
+#define ETAT_EN_PARTIE (1 << 4)    /* joue une partie */
+/* tous les etats ou le client a un pseudo */
+#define ETAT_INSCRIT (ETAT_LIBRE | ETAT_DEFI_ENVOYE | ETAT_DEFI_RECU | ETAT_EN_PARTIE)
 #define ETAT_TOUS (ETAT_CONNECTE | ETAT_INSCRIT)
 
 typedef struct
@@ -27,6 +31,8 @@ typedef struct
   char name[PSEUDO_MAX + 1]; /* pseudo */
   TamponEntree in;
   FileSortie out;
+  int adversaire; /* indice de l'autre joueur (defi ou partie), -1 si aucun */
+  int partie;     /* indice de la partie en cours, -1 si aucune */
   int a_fermer; /* 1 = a deconnecter a la fin du tour de boucle de select */
 } Client;
 

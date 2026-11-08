@@ -16,6 +16,8 @@ static void vider_case(Client *c)
   c->name[0] = '\0';
   entree_init(&c->in);
   sortie_init(&c->out);
+  c->adversaire = -1;
+  c->partie = -1;
   c->a_fermer = 0;
 }
 
@@ -77,6 +79,12 @@ const char *etat_nom(int etat)
     return "connecte";
   case ETAT_LIBRE:
     return "libre";
+  case ETAT_DEFI_ENVOYE:
+    return "defi_envoye";
+  case ETAT_DEFI_RECU:
+    return "defi_recu";
+  case ETAT_EN_PARTIE:
+    return "en_partie";
   default:
     return "inconnu";
   }
