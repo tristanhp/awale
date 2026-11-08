@@ -17,6 +17,7 @@
 #include <signal.h>
 #include "server.h"
 #include "tampon.h"
+#include "awale.h"
 
 /* ecrit toute la chaine sur la socket (write peut n'ecrire qu'une partie) ; 0 si OK, -1 sinon */
 static int ecrire_tout(int fd, const char *data, size_t len)
@@ -64,6 +65,38 @@ static const char *texte_erreur(const char *code)
   return code;
 }
 
+/* ce que le client retient pour mettre les messages en forme */
+static char mon_pseudo[32] = "";
+static char nom_joueur[2][32] = {"Sud", "Nord"}; /* [0] = Sud, [1] = Nord (EVT START) */
+
+/* EVT BOARD <id> <12 cases> <score_sud> <score_nord> <tour> : dessine le plateau */
+static void afficher_plateau(const char *args)
+{
+  Awale a;
+  int id, n = 0;
+  if (sscanf(args, "%d%n", &id, &n) != 1)
+    return;
+  args += n;
+  for (int c = 0; c < AWALE_CASES; c++)
+  {
+    if (sscanf(args, "%d%n", &a.cases[c], &n) != 1)
+      return;
+    args += n;
+  }
+  if (sscanf(args, "%d %d %d", &a.score[0], &a.score[1], &a.tour) != 3 || (a.tour != 0 && a.tour != 1))
+    return;
+  a.fini = 0;
+  a.gagnant = AWALE_NUL;
+
+  char buf[1024];
+  awale_afficher(&a, buf, sizeof(buf));
+  printf("%s", buf);
+  if (strcmp(nom_joueur[a.tour], mon_pseudo) == 0)
+    printf("A vous de jouer : MOVE <1-6>\n");
+  else
+    printf("Tour de %s.\n", nom_joueur[a.tour]);
+}
+
 /* met en forme une ligne recue du serveur ; une ligne inconnue est affichee telle quelle,
  * ce qui permet au serveur d'ajouter des messages sans casser un vieux client */
 static void afficher_message(char *ligne)
@@ -83,7 +116,43 @@ static void afficher_message(char *ligne)
     }
   }
   else if (strncmp(ligne, "OK NICK ", 8) == 0)
+  {
+    snprintf(mon_pseudo, sizeof(mon_pseudo), "%.31s", ligne + 8);
     printf("Vous etes inscrit sous le pseudo %s\n", ligne + 8);
+  }
+  else if (strncmp(ligne, "EVT START ", 10) == 0)
+  {
+    int id;
+    char sud[32], nord[32], premier[32];
+    if (sscanf(ligne + 10, "%d %31s %31s %31s", &id, sud, nord, premier) == 4)
+    {
+      snprintf(nom_joueur[0], sizeof(nom_joueur[0]), "%s", sud);
+      snprintf(nom_joueur[1], sizeof(nom_joueur[1]), "%s", nord);
+      printf("*** Partie %d : %s (Sud) contre %s (Nord). %s commence.\n", id, sud, nord, premier);
+    }
+  }
+  else if (strncmp(ligne, "EVT BOARD ", 10) == 0)
+    afficher_plateau(ligne + 10);
+  else if (strncmp(ligne, "EVT MOVE ", 9) == 0)
+  {
+    int id, numero, captures;
+    char qui[32];
+    if (sscanf(ligne + 9, "%d %31s %d %d", &id, qui, &numero, &captures) == 4)
+      printf("*** %s joue la case %d%s\n", qui, numero, captures > 0 ? " et capture des graines" : "");
+  }
+  else if (strncmp(ligne, "EVT END ", 8) == 0)
+  {
+    int id, ss, sn;
+    char gagnant[32], raison[16];
+    if (sscanf(ligne + 8, "%d %31s %d %d %15s", &id, gagnant, &ss, &sn, raison) == 5)
+    {
+      if (strcmp(gagnant, "NUL") == 0)
+        printf("*** Partie terminee : match nul (%d - %d).\n", ss, sn);
+      else
+        printf("*** Partie terminee : %s gagne (%d - %d)%s.\n", gagnant, ss, sn,
+               strcmp(raison, "forfait") == 0 ? " par forfait" : "");
+    }
+  }
   else if (strncmp(ligne, "OK HELP ", 8) == 0)
     printf("Commandes disponibles : %s\n", ligne + 8);
   else if (strcmp(ligne, "OK QUIT") == 0)
