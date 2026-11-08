@@ -16,6 +16,7 @@ static const Commande commandes[] = {
     {"HELP", cmd_help, ETAT_TOUS},
     {"QUIT", cmd_quit, ETAT_TOUS},
     {"CHALLENGE", cmd_challenge, ETAT_LIBRE},
+    {"ACCEPT", cmd_accept, ETAT_DEFI_RECU},
     {"DECLINE", cmd_decline, ETAT_DEFI_RECU},
     {"CANCEL", cmd_cancel, ETAT_DEFI_ENVOYE},
 };

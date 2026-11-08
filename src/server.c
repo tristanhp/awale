@@ -24,6 +24,8 @@
 #include "clients.h"
 #include "protocole.h"
 #include "commandes.h"
+#include "parties.h"
+#include <time.h>
 
 /* mis a 1 par CTRL-C : la boucle se termine proprement */
 static volatile sig_atomic_t arret = 0;
@@ -231,6 +233,7 @@ static void clear_clients(void)
 static void app(int port)
 {
   clients_init();
+  parties_init();
   SOCKET sock = init_connection(port);
   if (sock == INVALID_SOCKET)
     exit(1);
@@ -312,6 +315,7 @@ int main(int argc, char **argv)
   signal(SIGINT, sur_signal_arret);
   signal(SIGTERM, sur_signal_arret);
 
+  srand((unsigned)time(NULL) ^ (unsigned)getpid());
   init();
   app((int)port);
   end();

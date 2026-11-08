@@ -23,7 +23,7 @@ endif
 # -MMD -MP : genere les dependances sur les .h (un .h modifie recompile les .c concernes)
 CFLAGS += -MMD -MP
 
-SERVEUR_OBJS = $(addprefix $(OBJDIR)/, server.o clients.o protocole.o commandes.o tampon.o awale.o)
+SERVEUR_OBJS = $(addprefix $(OBJDIR)/, server.o clients.o protocole.o commandes.o parties.o tampon.o awale.o)
 CLIENT_OBJS  = $(addprefix $(OBJDIR)/, client.o tampon.o)
 
 all: $(BINDIR)/awale_serveur $(BINDIR)/awale_client

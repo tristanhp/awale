@@ -5,6 +5,7 @@
 #include "commandes.h"
 #include "clients.h"
 #include "protocole.h"
+#include "parties.h"
 
 void cmd_nick(int i, char *args)
 {
@@ -117,6 +118,15 @@ static void defi_terminer(int i)
     clients[autre].etat = ETAT_LIBRE;
     clients[autre].adversaire = -1;
   }
+}
+
+void cmd_accept(int i, char *args)
+{
+  (void)args;
+  int defiant = clients[i].adversaire;
+  /* le defi reste en place si la table des parties est pleine : le defie pourra reessayer */
+  if (partie_creer(defiant, i) < 0)
+    client_envoyer(i, "ERR serveur_plein");
 }
 
 void cmd_decline(int i, char *args)
