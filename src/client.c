@@ -53,6 +53,8 @@ static const char *texte_erreur(const char *code)
       {"joueur_inconnu", "aucun joueur connecte sous ce pseudo"},
       {"defi_soi", "vous ne pouvez pas vous defier vous-meme"},
       {"joueur_occupe", "ce joueur est deja en defi ou en partie"},
+      {"pas_votre_tour", "ce n'est pas votre tour"},
+      {"coup_illegal", "coup illegal (case vide, ou il faut nourrir l'adversaire)"},
       {"serveur_plein", "le serveur est plein"},
       {"ligne_trop_longue", "ligne trop longue, deconnexion"},
   };

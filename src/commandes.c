@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include "commandes.h"
 #include "clients.h"
 #include "protocole.h"
@@ -129,6 +130,55 @@ void cmd_accept(int i, char *args)
     client_envoyer(i, "ERR serveur_plein");
 }
 
+/* rang (0 = Sud, 1 = Nord) du client i dans sa partie */
+static int rang_dans_partie(int i)
+{
+  return parties[clients[i].partie].joueur[0] == i ? 0 : 1;
+}
+
+void cmd_move(int i, char *args)
+{
+  /* nombre strict : "3" seulement, pas "3x", "1 2" ni "" */
+  char *fin;
+  long n = strtol(args, &fin, 10);
+  if (args[0] == '\0' || *fin != '\0' || n < 1 || n > AWALE_PAR_JOUEUR)
+  {
+    client_envoyer(i, "ERR syntaxe");
+    return;
+  }
+
+  int p = clients[i].partie;
+  int rang = rang_dans_partie(i);
+  Awale *jeu = &parties[p].jeu;
+  if (jeu->tour != rang)
+  {
+    client_envoyer(i, "ERR pas_votre_tour");
+    return;
+  }
+
+  /* le moteur est seul juge : -1 = coup illegal, plateau inchange */
+  int captures = awale_jouer(jeu, awale_case_du_coup(rang, (int)n));
+  if (captures < 0)
+  {
+    client_envoyer(i, "ERR coup_illegal");
+    return;
+  }
+
+  partie_diffuser(p, "EVT MOVE %d %s %ld %d", p, clients[i].name, n, captures);
+  partie_envoyer_plateau(p, -1);
+  if (jeu->fini)
+  {
+    const char *raison = (jeu->gagnant >= 0 && jeu->score[jeu->gagnant] >= AWALE_SCORE_VICTOIRE) ? "score" : "blocage";
+    partie_terminer(p, jeu->gagnant, raison);
+  }
+}
+
+void cmd_board(int i, char *args)
+{
+  (void)args;
+  partie_envoyer_plateau(clients[i].partie, i);
+}
+
 void cmd_decline(int i, char *args)
 {
   (void)args;
@@ -149,6 +199,12 @@ void cmd_cancel(int i, char *args)
 
 void evenement_deconnexion(int i)
 {
+  /* depart en pleine partie : l'adversaire gagne par forfait */
+  if (clients[i].etat == ETAT_EN_PARTIE)
+  {
+    int p = clients[i].partie;
+    partie_terminer(p, 1 - rang_dans_partie(i), "forfait");
+  }
   /* defi en cours : l'autre joueur redevient libre et en est informe */
   if (clients[i].etat == ETAT_DEFI_ENVOYE || clients[i].etat == ETAT_DEFI_RECU)
   {

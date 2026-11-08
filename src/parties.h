@@ -29,8 +29,9 @@ int partie_creer(int a, int b);
 /* envoie un message aux deux joueurs (point d'envoi unique : les observateurs s'y ajouteront) */
 void partie_diffuser(int p, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
 
-/* EVT BOARD <id> <12 cases> <score_sud> <score_nord> <tour> */
-void partie_envoyer_plateau(int p);
+/* EVT BOARD <id> <12 cases> <score_sud> <score_nord> <tour>
+ * envoye aux deux joueurs (dest = -1) ou au seul client dest */
+void partie_envoyer_plateau(int p, int dest);
 
 /* termine la partie : EVT END aux deux, les joueurs redeviennent libres, la case est liberee.
  * gagnant = 0, 1 ou AWALE_NUL ; raison = "score", "blocage" ou "forfait".

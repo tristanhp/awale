@@ -26,7 +26,7 @@ void partie_diffuser(int p, const char *fmt, ...)
     client_envoyer(parties[p].joueur[k], "%s", msg);
 }
 
-void partie_envoyer_plateau(int p)
+void partie_envoyer_plateau(int p, int dest)
 {
   const Awale *a = &parties[p].jeu;
   char msg[MSG_MAX];
@@ -34,7 +34,10 @@ void partie_envoyer_plateau(int p)
   for (int c = 0; c < AWALE_CASES; c++)
     pos += snprintf(msg + pos, sizeof(msg) - (size_t)pos, " %d", a->cases[c]);
   snprintf(msg + pos, sizeof(msg) - (size_t)pos, " %d %d %d", a->score[0], a->score[1], a->tour);
-  partie_diffuser(p, "%s", msg);
+  if (dest < 0)
+    partie_diffuser(p, "%s", msg);
+  else
+    client_envoyer(dest, "%s", msg);
 }
 
 int partie_creer(int a, int b)
@@ -58,7 +61,7 @@ int partie_creer(int a, int b)
 
     partie_diffuser(p, "EVT START %d %s %s %s", p, clients[a].name, clients[b].name,
                     clients[pt->joueur[premier]].name);
-    partie_envoyer_plateau(p);
+    partie_envoyer_plateau(p, -1);
     return p;
   }
   return -1;
