@@ -4,11 +4,11 @@
 #ifndef SERVER_H
 #define SERVER_H
 
-#ifdef WIN32
+#if defined(WIN32) && !defined(__CYGWIN__)
 
 #include <winsock2.h>
 
-#elif defined(__linux__)
+#elif defined(__linux__) || defined(__CYGWIN__)
 
 #include <sys/types.h>
 #include <sys/socket.h>

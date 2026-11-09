@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
+#include <math.h>
+#include <limits.h>
 #include "parties.h"
 #include "clients.h"
 
@@ -33,7 +35,7 @@ void partie_envoyer_plateau(int p, int dest)
   int pos = snprintf(msg, sizeof(msg), "EVT BOARD %d", p);
   for (int c = 0; c < AWALE_CASES; c++)
     pos += snprintf(msg + pos, sizeof(msg) - (size_t)pos, " %d", a->cases[c]);
-  snprintf(msg + pos, sizeof(msg) - (size_t)pos, " %d %d %d", a->score[0], a->score[1], a->tour);
+  snprintf(msg + pos, sizeof(msg) - (size_t)pos, " %d %d %d %d", a->score[0], a->score[1], a->tour, a->fini);
   if (dest < 0)
     partie_diffuser(p, "%s", msg);
   else
@@ -73,6 +75,19 @@ void partie_terminer(int p, int gagnant, const char *raison)
   if (!pt->actif)
     return;
   pt->actif = 0; /* d'abord : si un envoi marque un client a_fermer, on ne reviendra pas ici */
+
+  int a = pt->joueur[0], b = pt->joueur[1];
+  double attendu = 1.0 / (1.0 + pow(10.0, ((double)clients[b].elo - clients[a].elo) / 400.0));
+  double resultat = gagnant == 0 ? 1.0 : (gagnant == 1 ? 0.0 : 0.5);
+  int variation = (int)round(32.0 * (resultat - attendu));
+  /* Une partie decisive fait toujours evoluer les scores entiers. */
+  if (variation == 0 && gagnant != AWALE_NUL)
+    variation = gagnant == 0 ? 1 : -1;
+  /* Evite tout debordement, meme apres ELO INT_MIN ou INT_MAX. */
+  double nouveau_a = (double)clients[a].elo + variation;
+  double nouveau_b = (double)clients[b].elo - variation;
+  clients[a].elo = nouveau_a > INT_MAX ? INT_MAX : (nouveau_a < INT_MIN ? INT_MIN : (int)nouveau_a);
+  clients[b].elo = nouveau_b > INT_MAX ? INT_MAX : (nouveau_b < INT_MIN ? INT_MIN : (int)nouveau_b);
 
   char nom[PSEUDO_MAX + 4];
   if (gagnant == 0 || gagnant == 1)

@@ -199,7 +199,7 @@ static void balayer_clients(void)
 
 static void init(void)
 {
-#ifdef WIN32
+#if defined(WIN32) && !defined(__CYGWIN__)
   WSADATA wsa;
   if (WSAStartup(MAKEWORD(2, 2), &wsa) < 0)
   {
@@ -211,7 +211,7 @@ static void init(void)
 
 static void end(void)
 {
-#ifdef WIN32
+#if defined(WIN32) && !defined(__CYGWIN__)
   WSACleanup();
 #endif
 }

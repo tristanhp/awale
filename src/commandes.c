@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <errno.h>
+#include <limits.h>
 #include "commandes.h"
 #include "clients.h"
 #include "protocole.h"
@@ -38,6 +40,23 @@ void cmd_nick(int i, char *args)
   clients_diffuser(i, "EVT JOIN %s", clients[i].name);
 }
 
+void cmd_elo(int i, char *args)
+{
+  if (*args != '\0')
+  {
+    char *fin;
+    errno = 0;
+    long valeur = strtol(args, &fin, 10);
+    if (fin == args || *fin != '\0' || errno == ERANGE || valeur < INT_MIN || valeur > INT_MAX)
+    {
+      client_envoyer(i, "ERR syntaxe");
+      return;
+    }
+    clients[i].elo = (int)valeur;
+  }
+  client_envoyer(i, "OK ELO %s %d", clients[i].name, clients[i].elo);
+}
+
 void cmd_who(int i, char *args)
 {
   (void)args;
@@ -49,7 +68,7 @@ void cmd_who(int i, char *args)
   {
     if (clients[k].sock < 0 || !(clients[k].etat & ETAT_INSCRIT))
       continue;
-    int r = snprintf(msg + pos, sizeof(msg) - pos, " %s:%s", clients[k].name, etat_nom(clients[k].etat));
+    int r = snprintf(msg + pos, sizeof(msg) - pos, " %s:%s:%d", clients[k].name, etat_nom(clients[k].etat), clients[k].elo);
     if (r < 0 || (size_t)r >= sizeof(msg) - pos)
     {
       msg[pos] = '\0'; /* plus de place : on envoie ce qui tient (ne devrait pas arriver avec 64 clients) */
@@ -104,8 +123,8 @@ void cmd_challenge(int i, char *args)
   clients[i].adversaire = cible;
   clients[cible].etat = ETAT_DEFI_RECU;
   clients[cible].adversaire = i;
-  client_envoyer(i, "OK CHALLENGE %s", clients[cible].name);
-  client_envoyer(cible, "EVT CHALLENGE %s", clients[i].name);
+  client_envoyer(i, "OK CHALLENGE %s (%d)", clients[cible].name, clients[cible].elo);
+  client_envoyer(cible, "EVT CHALLENGE %s (%d)", clients[i].name, clients[i].elo);
 }
 
 /* remet les deux joueurs d'un defi a l'etat libre */

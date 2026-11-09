@@ -19,6 +19,38 @@ liste des joueurs, défis et parties jouées avec plateau ASCII. L'observation d
 
 ## Compilation
 
+### Windows sans WSL
+
+Depuis PowerShell, dans le dossier `awale` :
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\installer-windows.ps1
+```
+
+Le script installe Cygwin, GCC, Make et Bash dans `.outils/`, sans droits
+administrateur ni modification permanente du PATH, puis compile et lance les tests.
+Une connexion Internet est nécessaire. Cygwin fournit les fonctions POSIX utilisées
+par le serveur et le client directement sous Windows ; WSL n'est pas nécessaire.
+
+Ouvrir ensuite trois terminaux dans `awale` :
+
+```powershell
+.\serveur.cmd                       # terminal 1 : serveur sur le port 5000
+.\client.cmd                        # terminal 2 : premier joueur
+.\client.cmd                        # terminal 3 : second joueur
+```
+
+Dans le premier client, saisir `NICK alice`, puis `CHALLENGE bob` une fois Bob
+connecté. Dans le second, saisir `NICK bob`, puis `ACCEPT`. Jouer avec `MOVE 1`
+à `MOVE 6`, quitter avec `QUIT`, arrêter le serveur avec Ctrl-C.
+
+Autre serveur ou autre port : `.\serveur.cmd -Port 6000` et
+`.\client.cmd -Hote localhost -Port 6000`.
+Pour recompiler et tester :
+`powershell -NoProfile -ExecutionPolicy Bypass -File .\windows.ps1 test`.
+
+### Linux
+
 ```
 make              # bin/awale_serveur et bin/awale_client
 make debug        # bin-debug/ : -g, détecteurs d'erreurs mémoire (ASan, UBSan)
@@ -59,6 +91,8 @@ réponses du serveur et les événements (arrivée d'un joueur...) **même penda
 |---|---|
 | `NICK pseudo` | S'enregistrer. Pseudo de 1 à 16 caractères parmi `A-Z a-z 0-9 _`, unique (la casse est ignorée). |
 | `WHO` | Liste des joueurs en ligne et leur état. |
+| `ELO` | Afficher son Elo. |
+| `ELO nombre` | Fixer librement son Elo à un entier (exemple : `ELO 900`). |
 | `HELP` | Commandes utilisables dans la situation courante. |
 | `CHALLENGE pseudo` | Défier un joueur libre. |
 | `ACCEPT` | Accepter le défi reçu : la partie commence, le tirage au sort désigne qui joue en premier. |
@@ -74,6 +108,27 @@ adversaire gagne par forfait. Un joueur a au plus un défi en cours ; il ne peut
 être défié tant qu'il n'est pas libre.
 
 États affichés par `WHO` : `libre`, `defi_envoye`, `defi_recu`, `en_partie`.
+
+Chaque connexion commence à **600 Elo**. L'Elo des autres joueurs s'affiche
+entre parenthèses uniquement dans `WHO` et les messages de défi envoyé ou reçu.
+La commande `ELO` répond uniquement au joueur qui l'utilise ; aucune annonce Elo
+n'est diffusée lors des connexions, modifications ou fins de partie.
+À la fin d'une partie (forfait compris), on calcule
+`EA = 1 / (1 + 10^((RB - RA) / 400))`, puis la variation arrondie
+`32 * (S - EA)` : `S = 1` pour une victoire, `0.5` pour un nul, `0` pour une défaite.
+La variation est ajoutée à A et soustraite à B. Deux joueurs à 600 finissent donc à
+616 et 584 après une victoire. Une victoire rapporte au minimum 1 point, retiré
+au perdant, même lorsque l'écart Elo ferait arrondir la variation à zéro.
+Les nouveaux scores restent stockés pour chaque joueur connecté et sont visibles dans `WHO`.
+Les flèches du plateau, les scores et le tour affichent les pseudos des joueurs.
+Le plateau final affiche « Partie terminee » au lieu d'annoncer un nouveau tour.
+`ELO` reste utilisable en partie ; le calcul utilise
+les valeurs au moment de la fin. Les scores ne sont pas sauvegardés après déconnexion.
+Les valeurs sont limitées aux entiers signés 32 bits pour éviter les débordements.
+
+Protocole Elo : `OK ELO <pseudo> <elo>` répond à la commande. `WHO` fournit
+`pseudo:etat:elo` pour chaque joueur. Les messages `OK CHALLENGE` et
+`EVT CHALLENGE` contiennent le pseudo suivi de `(elo)`.
 
 Messages d'erreur : `pseudo_pris`, `pseudo_invalide`, `deja_inscrit`, `syntaxe`,
 `commande_inconnue`, `etat_invalide` (par exemple `WHO` avant `NICK`, ou `MOVE` hors partie),

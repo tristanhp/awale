@@ -162,6 +162,12 @@ static void ajouter(char *buf, size_t n, size_t *pos, const char *fmt, ...)
 
 void awale_afficher(const Awale *a, char *buf, size_t n)
 {
+  awale_afficher_joueurs(a, buf, n, "Sud", "Nord");
+}
+
+void awale_afficher_joueurs(const Awale *a, char *buf, size_t n,
+                           const char *sud, const char *nord)
+{
   size_t pos = 0;
   if (n == 0)
     return;
@@ -171,7 +177,7 @@ void awale_afficher(const Awale *a, char *buf, size_t n)
   ajouter(buf, n, &pos, "        ");
   for (int k = AWALE_PAR_JOUEUR; k >= 1; k--)
     ajouter(buf, n, &pos, " %2d  ", k);
-  ajouter(buf, n, &pos, "  <- Nord\n");
+  ajouter(buf, n, &pos, "  <- %s\n", nord);
   ajouter(buf, n, &pos, "      +----+----+----+----+----+----+\n");
   ajouter(buf, n, &pos, "      |");
   for (int i = AWALE_CASES - 1; i >= AWALE_PAR_JOUEUR; i--)
@@ -186,12 +192,12 @@ void awale_afficher(const Awale *a, char *buf, size_t n)
   ajouter(buf, n, &pos, "        ");
   for (int k = 1; k <= AWALE_PAR_JOUEUR; k++)
     ajouter(buf, n, &pos, " %2d  ", k);
-  ajouter(buf, n, &pos, "  <- Sud\n");
-  ajouter(buf, n, &pos, "Score : Sud %d - Nord %d", a->score[0], a->score[1]);
+  ajouter(buf, n, &pos, "  <- %s\n", sud);
+  ajouter(buf, n, &pos, "Score : %s %d - %s %d", sud, a->score[0], nord, a->score[1]);
   if (a->fini)
     ajouter(buf, n, &pos, " | Partie terminee\n");
   else
-    ajouter(buf, n, &pos, " | Tour : %s\n", a->tour == 0 ? "Sud" : "Nord");
+    ajouter(buf, n, &pos, " | Tour : %s\n", a->tour == 0 ? sud : nord);
 }
 
 int awale_sauver(const Awale *a, const char *fichier)

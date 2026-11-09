@@ -13,6 +13,7 @@ static void vider_case(Client *c)
 {
   c->sock = -1;
   c->etat = ETAT_CONNECTE;
+  c->elo = 600;
   c->name[0] = '\0';
   entree_init(&c->in);
   sortie_init(&c->out);

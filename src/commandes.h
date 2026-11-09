@@ -8,6 +8,7 @@
 
 void cmd_nick(int i, char *args); /* NICK pseudo : s'enregistrer */
 void cmd_who(int i, char *args);  /* WHO : liste des joueurs en ligne */
+void cmd_elo(int i, char *args); /* ELO [entier] : consulter ou fixer son Elo */
 void cmd_help(int i, char *args); /* HELP : commandes disponibles */
 void cmd_quit(int i, char *args); /* QUIT : quitter proprement */
 void cmd_challenge(int i, char *args); /* CHALLENGE pseudo : defier un joueur libre */

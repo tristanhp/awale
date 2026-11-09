@@ -14,7 +14,7 @@
 #define AWALE_CASES 12
 #define AWALE_PAR_JOUEUR 6
 #define AWALE_GRAINES_DEPART 4
-#define AWALE_SCORE_VICTOIRE 25 /* plus de 24 graines */
+#define AWALE_SCORE_VICTOIRE 2 /* temporaire pour les essais ; valeur normale : 25 */
 #define AWALE_NUL (-1)          /* valeur de gagnant en cas de match nul */
 
 typedef struct
@@ -53,6 +53,9 @@ int awale_jouer(Awale *a, int c);
 
 /* ecrit le plateau en ASCII (plusieurs lignes) dans buf, sans depasser n octets */
 void awale_afficher(const Awale *a, char *buf, size_t n);
+/* Meme plateau avec les noms des deux joueurs (Sud puis Nord). */
+void awale_afficher_joueurs(const Awale *a, char *buf, size_t n,
+                           const char *sud, const char *nord);
 
 /* sauvegarde / chargement d'une position dans un fichier texte ; 0 si OK, -1 sinon */
 int awale_sauver(const Awale *a, const char *fichier);
