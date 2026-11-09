@@ -85,6 +85,8 @@ const char *etat_nom(int etat)
     return "defi_recu";
   case ETAT_EN_PARTIE:
     return "en_partie";
+  case ETAT_OBSERVATEUR:
+    return "observe";
   default:
     return "inconnu";
   }

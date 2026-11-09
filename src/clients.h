@@ -20,8 +20,9 @@
 #define ETAT_DEFI_ENVOYE (1 << 2)  /* a defie quelqu'un, attend sa reponse */
 #define ETAT_DEFI_RECU (1 << 3)    /* a ete defie, doit repondre */
 #define ETAT_EN_PARTIE (1 << 4)    /* joue une partie */
+#define ETAT_OBSERVATEUR (1 << 5)  /* regarde la partie d'autres joueurs (champ partie) */
 /* tous les etats ou le client a un pseudo */
-#define ETAT_INSCRIT (ETAT_LIBRE | ETAT_DEFI_ENVOYE | ETAT_DEFI_RECU | ETAT_EN_PARTIE)
+#define ETAT_INSCRIT (ETAT_LIBRE | ETAT_DEFI_ENVOYE | ETAT_DEFI_RECU | ETAT_EN_PARTIE | ETAT_OBSERVATEUR)
 #define ETAT_TOUS (ETAT_CONNECTE | ETAT_INSCRIT)
 
 typedef struct

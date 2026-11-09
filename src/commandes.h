@@ -14,6 +14,9 @@ void cmd_challenge(int i, char *args); /* CHALLENGE pseudo : defier un joueur li
 void cmd_accept(int i, char *args);    /* ACCEPT : accepter le defi recu, la partie commence */
 void cmd_move(int i, char *args);      /* MOVE n : jouer la case n (1 a 6) */
 void cmd_board(int i, char *args);     /* BOARD : reafficher le plateau */
+void cmd_games(int i, char *args);     /* GAMES : parties en cours */
+void cmd_watch(int i, char *args);     /* WATCH id : observer une partie */
+void cmd_unwatch(int i, char *args);   /* UNWATCH : arreter d'observer */
 void cmd_decline(int i, char *args);   /* DECLINE : refuser le defi recu */
 void cmd_cancel(int i, char *args);    /* CANCEL : retirer son defi */
 

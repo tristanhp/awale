@@ -3,9 +3,8 @@
 Projet de programmation répartie (INSA Lyon, 4IF) : un serveur TCP qui fait jouer des clients
 à l'Awalé. Un seul processus, `select()`, protocole texte.
 
-**Avancement : séance 2 (étapes 0 à 4).** Moteur de jeu testé, serveur et client avec pseudos,
-liste des joueurs, défis et parties jouées avec plateau ASCII. L'observation des parties
-(étape 5) vient ensuite.
+**Avancement : séance 3 (étapes 0 à 5).** Moteur de jeu testé, serveur et client avec pseudos,
+liste des joueurs, défis, parties jouées avec plateau ASCII et observation des parties.
 
 | Étape | Contenu | État |
 |---|---|---|
@@ -14,7 +13,7 @@ liste des joueurs, défis et parties jouées avec plateau ASCII. L'observation d
 | 2 | Liste des joueurs en ligne | fait |
 | 3 | Défis (`CHALLENGE`, `ACCEPT`, `DECLINE`, `CANCEL`) | fait |
 | 4 | Parties (`MOVE`, `BOARD`, fin de partie, forfait) | fait |
-| 5 | Observateurs (`GAMES`, `WATCH`) | à faire |
+| 5 | Observateurs (`GAMES`, `WATCH`, `UNWATCH`) | fait |
 | 6 à 10 | Chat, bio, mode privé, sauvegarde des parties, extras | à faire |
 
 ## Compilation
@@ -66,6 +65,9 @@ réponses du serveur et les événements (arrivée d'un joueur...) **même penda
 | `CANCEL` | Retirer le défi qu'on a envoyé. |
 | `MOVE n` | Jouer la case `n` (1 à 6, de gauche à droite dans son camp). |
 | `BOARD` | Réafficher le plateau de sa partie. |
+| `GAMES` | Liste des parties en cours (`numéro : joueurs`). |
+| `WATCH n` | Regarder la partie `n` (joueur libre seulement) : plateau courant, puis chaque coup. |
+| `UNWATCH` | Arrêter d'observer. |
 | `QUIT` | Quitter (CTRL-D fait de même). |
 
 Le défiant joue Sud (en bas), le défié joue Nord (en haut). Le plateau et l'indication « à vous
@@ -73,12 +75,15 @@ de jouer » s'affichent après chaque coup. Si un joueur se déconnecte en plein
 adversaire gagne par forfait. Un joueur a au plus un défi en cours ; il ne peut ni défier ni
 être défié tant qu'il n'est pas libre.
 
-États affichés par `WHO` : `libre`, `defi_envoye`, `defi_recu`, `en_partie`.
+Un observateur ne peut ni jouer ni défier ni être défié (jusqu'à `UNWATCH`) ; la fin de la partie
+lui est annoncée et il redevient libre. Une partie accepte 8 observateurs au plus.
+
+États affichés par `WHO` : `libre`, `defi_envoye`, `defi_recu`, `en_partie`, `observe`.
 
 Messages d'erreur : `pseudo_pris`, `pseudo_invalide`, `deja_inscrit`, `syntaxe`,
 `commande_inconnue`, `etat_invalide` (par exemple `WHO` avant `NICK`, ou `MOVE` hors partie),
 `serveur_plein`, `ligne_trop_longue`, `joueur_inconnu`, `defi_soi`, `joueur_occupe`,
-`pas_votre_tour`, `coup_illegal`.
+`pas_votre_tour`, `coup_illegal`, `partie_inconnue`, `trop_observateurs`.
 
 ## Protocole (pour `nc` et pour le développement)
 
@@ -105,6 +110,8 @@ client> MOVE 3                serveur> EVT MOVE 0 alice 3 0  puis EVT BOARD ... 
 | `EVT BOARD <id> <c0> ... <c11> <score_sud> <score_nord> <tour>` | plateau : 12 cases dans l'ordre du moteur (Sud 0 à 5, Nord 6 à 11), `tour` = 0 (Sud) ou 1 (Nord) |
 | `EVT MOVE <id> <pseudo> <n> <captures>` | un coup a été joué |
 | `EVT END <id> <gagnant ou NUL> <score_sud> <score_nord> <raison>` | `raison` : `score`, `blocage` ou `forfait` |
+| `OK GAMES 0:alice-bob 3:carol-dave` | réponse à `GAMES` (`OK GAMES` seul s'il n'y en a pas) |
+| `OK WATCH <id> <sud> <nord>` | début d'observation, suivi d'un `EVT BOARD` ; ensuite `EVT MOVE`, `EVT BOARD` et `EVT END` comme pour les joueurs |
 | `EVT DECLINED <pseudo>` / `EVT CANCELLED <pseudo>` | défi refusé, ou retiré (ou joueur parti) |
 
 Limites : lignes de 1023 caractères au maximum (au-delà : `ERR ligne_trop_longue` et
@@ -123,7 +130,7 @@ variantes écartées : [`docs/regles-awale.md`](docs/regles-awale.md).
 src/awale.[ch]       moteur pur (aucune E/S)
 src/tampon.[ch]      tampon de lignes en entrée, file d'envoi en sortie (tailles fixes)
 src/clients.[ch]     table des clients, états, pseudos, envoi de messages
-src/parties.[ch]     parties en cours (32 au maximum), diffusion aux deux joueurs
+src/parties.[ch]     parties en cours (32 au maximum), diffusion aux joueurs et observateurs
 src/protocole.[ch]   table des commandes + dispatcher
 src/commandes.[ch]   une fonction par commande
 src/server.[ch]      portabilité réseau, socket d’écoute + boucle select (structure de la V2)

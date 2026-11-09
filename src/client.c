@@ -56,6 +56,8 @@ static const char *texte_erreur(const char *code)
       {"joueur_occupe", "ce joueur est deja en defi ou en partie"},
       {"pas_votre_tour", "ce n'est pas votre tour"},
       {"coup_illegal", "coup illegal (case vide, ou il faut nourrir l'adversaire)"},
+      {"partie_inconnue", "aucune partie en cours avec ce numero (voir GAMES)"},
+      {"trop_observateurs", "cette partie a deja le maximum d'observateurs"},
       {"serveur_plein", "le serveur est plein"},
       {"ligne_trop_longue", "ligne trop longue, deconnexion"},
   };
@@ -120,6 +122,37 @@ static void afficher_message(char *ligne)
     snprintf(mon_pseudo, sizeof(mon_pseudo), "%.31s", ligne + 8);
     printf("Vous etes inscrit sous le pseudo %s\n", ligne + 8);
   }
+  else if (strncmp(ligne, "OK GAMES", 8) == 0 && (ligne[8] == ' ' || ligne[8] == '\0'))
+  {
+    printf("Parties en cours :\n");
+    char *sauve;
+    int nb = 0;
+    for (char *mot = strtok_r(ligne + 8, " ", &sauve); mot != NULL; mot = strtok_r(NULL, " ", &sauve))
+    {
+      char *deux_points = strchr(mot, ':');
+      if (deux_points != NULL)
+      {
+        *deux_points = '\0';
+        printf("  - partie %s : %s   (WATCH %s pour la regarder)\n", mot, deux_points + 1, mot);
+        nb++;
+      }
+    }
+    if (nb == 0)
+      printf("  (aucune)\n");
+  }
+  else if (strncmp(ligne, "OK WATCH ", 9) == 0)
+  {
+    int id;
+    char sud[32], nord[32];
+    if (sscanf(ligne + 9, "%d %31s %31s", &id, sud, &nord[0]) == 3)
+    {
+      snprintf(nom_joueur[0], sizeof(nom_joueur[0]), "%s", sud);
+      snprintf(nom_joueur[1], sizeof(nom_joueur[1]), "%s", nord);
+      printf("*** Vous regardez la partie %d : %s (Sud) contre %s (Nord). UNWATCH pour arreter.\n", id, sud, nord);
+    }
+  }
+  else if (strcmp(ligne, "OK UNWATCH") == 0)
+    printf("Vous ne regardez plus la partie.\n");
   else if (strncmp(ligne, "EVT START ", 10) == 0)
   {
     int id;

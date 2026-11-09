@@ -179,6 +179,58 @@ void cmd_board(int i, char *args)
   partie_envoyer_plateau(clients[i].partie, i);
 }
 
+void cmd_games(int i, char *args)
+{
+  (void)args;
+  char msg[MSG_MAX];
+  int pos = snprintf(msg, sizeof(msg), "OK GAMES");
+  for (int p = 0; p < MAX_PARTIES; p++)
+  {
+    if (!parties[p].actif)
+      continue;
+    int r = snprintf(msg + pos, sizeof(msg) - (size_t)pos, " %d:%s-%s", p,
+                     clients[parties[p].joueur[0]].name, clients[parties[p].joueur[1]].name);
+    if (r < 0 || (size_t)r >= sizeof(msg) - (size_t)pos)
+    {
+      msg[pos] = '\0'; /* plus de place : on envoie ce qui tient */
+      break;
+    }
+    pos += r;
+  }
+  client_envoyer(i, "%s", msg);
+}
+
+void cmd_watch(int i, char *args)
+{
+  char *fin;
+  long id = strtol(args, &fin, 10);
+  if (args[0] == '\0' || *fin != '\0')
+  {
+    client_envoyer(i, "ERR syntaxe");
+    return;
+  }
+  if (id < 0 || id >= MAX_PARTIES || !parties[id].actif)
+  {
+    client_envoyer(i, "ERR partie_inconnue");
+    return;
+  }
+  if (partie_ajouter_observateur((int)id, i) < 0)
+  {
+    client_envoyer(i, "ERR trop_observateurs");
+    return;
+  }
+  client_envoyer(i, "OK WATCH %ld %s %s", id, clients[parties[id].joueur[0]].name,
+                 clients[parties[id].joueur[1]].name);
+  partie_envoyer_plateau((int)id, i);
+}
+
+void cmd_unwatch(int i, char *args)
+{
+  (void)args;
+  partie_retirer_observateur(clients[i].partie, i);
+  client_envoyer(i, "OK UNWATCH");
+}
+
 void cmd_decline(int i, char *args)
 {
   (void)args;
@@ -199,6 +251,9 @@ void cmd_cancel(int i, char *args)
 
 void evenement_deconnexion(int i)
 {
+  /* un observateur qui part est simplement retire de la liste */
+  if (clients[i].etat == ETAT_OBSERVATEUR)
+    partie_retirer_observateur(clients[i].partie, i);
   /* depart en pleine partie : l'adversaire gagne par forfait */
   if (clients[i].etat == ETAT_EN_PARTIE)
   {

@@ -24,6 +24,40 @@ void partie_diffuser(int p, const char *fmt, ...)
   va_end(ap);
   for (int k = 0; k < 2; k++)
     client_envoyer(parties[p].joueur[k], "%s", msg);
+  for (int k = 0; k < MAX_OBSERVATEURS; k++)
+    if (parties[p].observateur[k] >= 0)
+      client_envoyer(parties[p].observateur[k], "%s", msg);
+}
+
+int partie_ajouter_observateur(int p, int c)
+{
+  for (int k = 0; k < MAX_OBSERVATEURS; k++)
+  {
+    if (parties[p].observateur[k] < 0)
+    {
+      parties[p].observateur[k] = c;
+      clients[c].etat = ETAT_OBSERVATEUR;
+      clients[c].partie = p;
+      return 0;
+    }
+  }
+  return -1;
+}
+
+void partie_retirer_observateur(int p, int c)
+{
+  for (int k = 0; k < MAX_OBSERVATEURS; k++)
+  {
+    if (parties[p].observateur[k] == c)
+    {
+      parties[p].observateur[k] = -1;
+      if (clients[c].sock >= 0 && clients[c].partie == p)
+      {
+        clients[c].etat = ETAT_LIBRE;
+        clients[c].partie = -1;
+      }
+    }
+  }
 }
 
 void partie_envoyer_plateau(int p, int dest)
@@ -50,6 +84,8 @@ int partie_creer(int a, int b)
     pt->actif = 1;
     pt->joueur[0] = a;
     pt->joueur[1] = b;
+    for (int k = 0; k < MAX_OBSERVATEURS; k++)
+      pt->observateur[k] = -1;
     int premier = rand() % 2;
     awale_init(&pt->jeu, premier);
 
@@ -79,6 +115,16 @@ void partie_terminer(int p, int gagnant, const char *raison)
     snprintf(nom, sizeof(nom), "%s", clients[pt->joueur[gagnant]].name);
   else
     snprintf(nom, sizeof(nom), "NUL");
+
+  /* les observateurs voient la fin, puis redeviennent libres */
+  for (int k = 0; k < MAX_OBSERVATEURS; k++)
+  {
+    int o = pt->observateur[k];
+    if (o < 0)
+      continue;
+    client_envoyer(o, "EVT END %d %s %d %d %s", p, nom, pt->jeu.score[0], pt->jeu.score[1], raison);
+    partie_retirer_observateur(p, o);
+  }
 
   for (int k = 0; k < 2; k++)
   {
