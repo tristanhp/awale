@@ -3,8 +3,9 @@
 Projet de programmation répartie (INSA Lyon, 4IF) : un serveur TCP qui fait jouer des clients
 à l'Awalé. Un seul processus, `select()`, protocole texte.
 
-**Avancement : séance 3 (étapes 0 à 5).** Moteur de jeu testé, serveur et client avec pseudos,
-liste des joueurs, défis, parties jouées avec plateau ASCII et observation des parties.
+**Version finale.** Moteur de jeu testé, serveur et client avec pseudos, liste des joueurs,
+défis, parties jouées avec plateau ASCII, observation des parties et classement Elo.
+Le serveur tourne sous Linux, et sous Windows sans WSL (voir « Compilation »).
 
 | Étape | Contenu | État |
 |---|---|---|
@@ -14,7 +15,8 @@ liste des joueurs, défis, parties jouées avec plateau ASCII et observation des
 | 3 | Défis (`CHALLENGE`, `ACCEPT`, `DECLINE`, `CANCEL`) | fait |
 | 4 | Parties (`MOVE`, `BOARD`, fin de partie, forfait) | fait |
 | 5 | Observateurs (`GAMES`, `WATCH`, `UNWATCH`) | fait |
-| 6 à 10 | Chat, bio, mode privé, sauvegarde des parties, extras | à faire |
+| 6 | Classement Elo (`ELO`, mise à jour en fin de partie) | fait |
+| 7 à 10 | Chat, bio, mode privé, sauvegarde des parties | non réalisé |
 
 ## Compilation
 
@@ -53,7 +55,7 @@ Pour recompiler et tester :
 ```
 make              # bin/awale_serveur et bin/awale_client
 make debug        # bin-debug/ : -g, détecteurs d'erreurs mémoire (ASan, UBSan)
-make test         # tests du moteur + scénarios du protocole + défis et parties
+make test         # tests du moteur + scénarios du protocole, des parties et de l'Elo
 make test-debug   # idem avec les binaires de debug
 make clean
 ```
@@ -148,12 +150,13 @@ Un message = une ligne terminée par `\n` (`\r\n` accepté). Le serveur répond 
 
 ```
 client> NICK alice            serveur> OK NICK alice
-client> WHO                   serveur> OK WHO alice:libre bob:libre
+client> WHO                   serveur> OK WHO alice:libre:600 bob:libre:600
                               serveur> EVT JOIN bob        (quand bob arrive)
                               serveur> EVT LEAVE bob       (quand bob part)
-client> CHALLENGE bob         serveur> OK CHALLENGE bob     (bob reçoit : EVT CHALLENGE alice)
+client> CHALLENGE bob         serveur> OK CHALLENGE bob (600)   (bob reçoit : EVT CHALLENGE alice (600))
+client> ELO                   serveur> OK ELO alice 600
 client> ACCEPT                serveur> EVT START 0 alice bob alice   (aux deux joueurs)
-                              serveur> EVT BOARD 0 4 4 4 4 4 4 4 4 4 4 4 4 0 0 0
+                              serveur> EVT BOARD 0 4 4 4 4 4 4 4 4 4 4 4 4 0 0 0 0
 client> MOVE 3                serveur> EVT MOVE 0 alice 3 0  puis EVT BOARD ... (aux deux)
                               serveur> EVT END 0 alice 26 12 score   (fin de partie)
 ```
@@ -163,11 +166,13 @@ client> MOVE 3                serveur> EVT MOVE 0 alice 3 0  puis EVT BOARD ... 
 | Message | Sens |
 |---|---|
 | `EVT START <id> <sud> <nord> <premier>` | la partie commence (pseudos) |
-| `EVT BOARD <id> <c0> ... <c11> <score_sud> <score_nord> <tour>` | plateau : 12 cases dans l'ordre du moteur (Sud 0 à 5, Nord 6 à 11), `tour` = 0 (Sud) ou 1 (Nord) |
+| `EVT BOARD <id> <c0> ... <c11> <score_sud> <score_nord> <tour> <fini>` | plateau : 12 cases dans l'ordre du moteur (Sud 0 à 5, Nord 6 à 11), `tour` = 0 (Sud) ou 1 (Nord), `fini` = 1 quand la partie est terminée |
 | `EVT MOVE <id> <pseudo> <n> <captures>` | un coup a été joué |
 | `EVT END <id> <gagnant ou NUL> <score_sud> <score_nord> <raison>` | `raison` : `score`, `blocage` ou `forfait` |
 | `OK GAMES 0:alice-bob 3:carol-dave` | réponse à `GAMES` (`OK GAMES` seul s'il n'y en a pas) |
 | `OK WATCH <id> <sud> <nord>` | début d'observation, suivi d'un `EVT BOARD` ; ensuite `EVT MOVE`, `EVT BOARD` et `EVT END` comme pour les joueurs |
+| `OK ELO <pseudo> <elo>` | réponse à `ELO` |
+| `OK WHO <pseudo>:<état>:<elo> ...` | réponse à `WHO` |
 | `EVT DECLINED <pseudo>` / `EVT CANCELLED <pseudo>` | défi refusé, ou retiré (ou joueur parti) |
 
 Limites : lignes de 1023 caractères au maximum (au-delà : `ERR ligne_trop_longue` et
@@ -191,6 +196,8 @@ src/protocole.[ch]   table des commandes + dispatcher
 src/commandes.[ch]   une fonction par commande
 src/server.[ch]      portabilité réseau, socket d’écoute + boucle select (structure de la V2)
 src/client.c         client : select sur le clavier et la socket, affichage du plateau
+tests/               test_awale.c (moteur), test_proto.sh, test_parties.sh, test_elo.sh
+windows.ps1, installer-windows.ps1, serveur.cmd, client.cmd   lancement sous Windows
 ```
 
 **Ajouter une commande** : écrire `cmd_xxx(int i, char *args)` dans `commandes.c`, la déclarer
