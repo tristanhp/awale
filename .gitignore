@@ -7,4 +7,5 @@ tests/bin/
 *.d
 *.tmp
 parties_sauvegardees/
+.outils/
 docs/

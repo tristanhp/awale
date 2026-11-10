@@ -29,6 +29,7 @@ typedef struct
 {
   SOCKET sock; /* -1 = case libre */
   int etat; /* un seul des bits ETAT_* */
+  int elo;
   char name[PSEUDO_MAX + 1]; /* pseudo */
   TamponEntree in;
   FileSortie out;

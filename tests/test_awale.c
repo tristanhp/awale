@@ -288,6 +288,17 @@ static void test_affichage(void)
   CHECK(strstr(buf, "Sud") != NULL && strstr(buf, "Nord") != NULL);
   CHECK(strstr(buf, "Score : Sud 0 - Nord 0") != NULL);
 
+  awale_afficher_joueurs(&a, buf, sizeof(buf), "LET", "LeJ");
+  CHECK(strstr(buf, "<- LET") != NULL && strstr(buf, "<- LeJ") != NULL);
+  CHECK(strstr(buf, "Score : LET 0 - LeJ 0 | Tour : LET") != NULL);
+  CHECK(strstr(buf, "Sud") == NULL && strstr(buf, "Nord") == NULL);
+  a.tour = 1;
+  awale_afficher_joueurs(&a, buf, sizeof(buf), "LET", "LeJ");
+  CHECK(strstr(buf, "Tour : LeJ") != NULL);
+  a.fini = 1;
+  awale_afficher_joueurs(&a, buf, sizeof(buf), "LET", "LeJ");
+  CHECK(strstr(buf, "Partie terminee") != NULL && strstr(buf, "Tour :") == NULL);
+
   /* tampons trop petits : jamais de debordement, toujours termine par \0 */
   char petit[20];
   memset(petit, 'x', sizeof(petit));

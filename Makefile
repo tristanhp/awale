@@ -29,7 +29,7 @@ CLIENT_OBJS  = $(addprefix $(OBJDIR)/, client.o tampon.o awale.o)
 all: $(BINDIR)/awale_serveur $(BINDIR)/awale_client
 
 $(BINDIR)/awale_serveur: $(SERVEUR_OBJS) | $(BINDIR)
-	$(CC) $(LDFLAGS) -o $@ $^
+	$(CC) $(LDFLAGS) -o $@ $^ -lm
 
 $(BINDIR)/awale_client: $(CLIENT_OBJS) | $(BINDIR)
 	$(CC) $(LDFLAGS) -o $@ $^
@@ -51,6 +51,7 @@ test: all tests/bin/test_awale
 	tests/bin/test_awale
 	BIN=$(BINDIR) tests/test_proto.sh
 	BIN=$(BINDIR) tests/test_parties.sh
+	BIN=$(BINDIR) bash tests/test_elo.sh
 
 test-debug:
 	$(MAKE) BUILD=debug test

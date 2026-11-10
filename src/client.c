@@ -85,16 +85,18 @@ static void afficher_plateau(const char *args)
       return;
     args += n;
   }
-  if (sscanf(args, "%d %d %d", &a.score[0], &a.score[1], &a.tour) != 3 || (a.tour != 0 && a.tour != 1))
-    return;
   a.fini = 0;
+  if (sscanf(args, "%d %d %d %d", &a.score[0], &a.score[1], &a.tour, &a.fini) < 3 || (a.tour != 0 && a.tour != 1))
+    return;
   a.gagnant = AWALE_NUL;
 
   char buf[1024];
-  awale_afficher(&a, buf, sizeof(buf));
+  awale_afficher_joueurs(&a, buf, sizeof(buf), nom_joueur[0], nom_joueur[1]);
   printf("%s", buf);
+  if (a.fini)
+    return;
   if (strcmp(nom_joueur[a.tour], mon_pseudo) == 0)
-    printf("A vous de jouer : MOVE <1-6>\n");
+    printf("A vous de jouer, %s : MOVE <1-6>\n", mon_pseudo);
   else
     printf("Tour de %s.\n", nom_joueur[a.tour]);
 }
@@ -113,14 +115,30 @@ static void afficher_message(char *ligne)
       if (deux_points != NULL)
       {
         *deux_points = '\0';
-        printf("  - %s (%s)\n", mot, deux_points + 1);
+        char *elo = strchr(deux_points + 1, ':');
+        if (elo != NULL)
+        {
+          *elo++ = '\0';
+          /* Elo fourni uniquement par la reponse WHO. */
+        }
+        printf("  - %s (%s) (%s)\n", mot, elo != NULL ? elo : "600", deux_points + 1);
       }
     }
   }
   else if (strncmp(ligne, "OK NICK ", 8) == 0)
   {
     snprintf(mon_pseudo, sizeof(mon_pseudo), "%.31s", ligne + 8);
-    printf("Vous etes inscrit sous le pseudo %s\n", ligne + 8);
+    printf("Vous etes inscrit sous le pseudo %s\n", mon_pseudo);
+  }
+  else if (strncmp(ligne, "OK ELO ", 7) == 0)
+  {
+    char nom[32];
+    int elo;
+    if (sscanf(ligne + 7, "%31s %d", nom, &elo) == 2)
+    {
+      /* Reponse visible uniquement par le joueur qui utilise ELO. */
+      printf("Elo : %s (%d)\n", nom, elo);
+    }
   }
   else if (strncmp(ligne, "OK GAMES", 8) == 0 && (ligne[8] == ' ' || ligne[8] == '\0'))
   {
@@ -207,7 +225,9 @@ static void afficher_message(char *ligne)
   else if (strncmp(ligne, "EVT JOIN ", 9) == 0)
     printf("*** %s vient de se connecter\n", ligne + 9);
   else if (strncmp(ligne, "EVT LEAVE ", 10) == 0)
+  {
     printf("*** %s est parti\n", ligne + 10);
+  }
   else if (strncmp(ligne, "ERR ", 4) == 0)
     printf("Erreur : %s\n", texte_erreur(ligne + 4));
   else
