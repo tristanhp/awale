@@ -12,7 +12,7 @@
 
 #include <stddef.h>
 
-#define ENTREE_MAX 1024     /* une ligne fait au plus ENTREE_MAX - 1 caracteres (+ le '\n') */
+#define ENTREE_MAX 1024 /* une ligne fait au plus ENTREE_MAX - 1 caracteres (+ le '\n') */
 #define SORTIE_MAX 16384
 
 typedef struct
@@ -24,14 +24,14 @@ typedef struct
 typedef struct
 {
   char data[SORTIE_MAX];
-  size_t debut;   /* premier octet pas encore ecrit */
-  size_t len;     /* nombre d'octets en attente */
+  size_t debut; /* premier octet pas encore ecrit */
+  size_t len;   /* nombre d'octets en attente */
 } FileSortie;
 
 /* resultats de entree_remplir */
-#define ENTREE_OK 1        /* lecture faite (ou rien a lire pour l'instant) */
-#define ENTREE_FERME 0     /* l'autre a ferme la connexion */
-#define ENTREE_ERREUR -1   /* erreur reseau (ou tampon plein) */
+#define ENTREE_OK 1      /* lecture faite (ou rien a lire pour l'instant) */
+#define ENTREE_FERME 0   /* l'autre a ferme la connexion */
+#define ENTREE_ERREUR -1 /* erreur reseau (ou tampon plein) */
 
 void entree_init(TamponEntree *t);
 
