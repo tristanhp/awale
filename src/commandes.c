@@ -8,6 +8,7 @@
 #include "commandes.h"
 #include "clients.h"
 #include "protocole.h"
+#include "sauvegarde.h"
 #include "parties.h"
 
 void cmd_nick(int i, char *args)
@@ -36,6 +37,10 @@ void cmd_nick(int i, char *args)
 
   snprintf(clients[i].name, sizeof(clients[i].name), "%s", args);
   clients[i].etat = ETAT_LIBRE;
+  /* joueur deja vu lors d'une session precedente : il retrouve son Elo */
+  int elo_sauve;
+  if (sauvegarde_chercher(clients[i].name, &elo_sauve))
+    clients[i].elo = elo_sauve;
   client_envoyer(i, "OK NICK %s", clients[i].name);
   clients_diffuser(i, "EVT JOIN %s", clients[i].name);
 }
@@ -53,6 +58,7 @@ void cmd_elo(int i, char *args)
       return;
     }
     clients[i].elo = (int)valeur;
+    sauvegarde_enregistrer(clients[i].name, clients[i].elo);
   }
   client_envoyer(i, "OK ELO %s %d", clients[i].name, clients[i].elo);
 }

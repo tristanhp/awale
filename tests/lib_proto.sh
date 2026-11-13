@@ -5,10 +5,13 @@
 BIN=${BIN:-bin}
 PORT=$((20000 + RANDOM % 20000))
 LOG=$(mktemp)
+# fichier de sauvegarde des Elo propre a ce test : on ne touche jamais au vrai joueurs.csv
+DONNEES=$(mktemp)
+export AWALE_DONNEES=$DONNEES
 NB_OK=0
 NB_KO=0
 
-cleanup() { kill "$SERVEUR" 2>/dev/null; rm -f "$LOG"; }
+cleanup() { kill "$SERVEUR" 2>/dev/null; rm -f "$LOG" "$DONNEES" "$DONNEES.tmp"; }
 trap cleanup EXIT
 trap '' PIPE   # ecrire vers un serveur qui a ferme ne doit pas tuer le script
 

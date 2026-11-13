@@ -16,7 +16,9 @@ Le serveur tourne sous Linux, et sous Windows sans WSL (voir « Compilation »).
 | 4 | Parties (`MOVE`, `BOARD`, fin de partie, forfait) | fait |
 | 5 | Observateurs (`GAMES`, `WATCH`, `UNWATCH`) | fait |
 | 6 | Classement Elo (`ELO`, mise à jour en fin de partie) | fait |
-| 7 à 10 | Chat, bio, mode privé, sauvegarde des parties | non réalisé |
+| 7 | Chat entre adversaires (`CHAT`) | fait |
+| 8 | Sauvegarde de l'Elo entre les sessions (fichier CSV, par pseudo) | fait |
+| 9 à 10 | Bio, mode privé, sauvegarde et reprise des parties | non réalisé |
 
 ## Compilation
 
@@ -55,7 +57,7 @@ Pour recompiler et tester :
 ```
 make              # bin/awale_serveur et bin/awale_client
 make debug        # bin-debug/ : -g, détecteurs d'erreurs mémoire (ASan, UBSan)
-make test         # tests du moteur + scénarios du protocole, des parties et de l'Elo
+make test         # tests du moteur + scénarios du protocole, des parties, de l'Elo, du chat et de la sauvegarde
 make test-debug   # idem avec les binaires de debug
 make clean
 ```
@@ -127,11 +129,11 @@ n'est diffusée lors des connexions, modifications ou fins de partie.
 La variation est ajoutée à A et soustraite à B. Deux joueurs à 600 finissent donc à
 616 et 584 après une victoire. Une victoire rapporte au minimum 1 point, retiré
 au perdant, même lorsque l'écart Elo ferait arrondir la variation à zéro.
-Les nouveaux scores restent stockés pour chaque joueur connecté et sont visibles dans `WHO`.
+Les nouveaux scores sont visibles dans `WHO`.
 Les flèches du plateau, les scores et le tour affichent les pseudos des joueurs.
 Le plateau final affiche « Partie terminee » au lieu d'annoncer un nouveau tour.
 `ELO` reste utilisable en partie ; le calcul utilise
-les valeurs au moment de la fin. Les scores ne sont pas sauvegardés après déconnexion.
+les valeurs au moment de la fin. Les scores sont sauvegardés (voir « Sauvegarde »).
 Les valeurs sont limitées aux entiers signés 32 bits pour éviter les débordements.
 
 Protocole Elo : `OK ELO <pseudo> <elo>` répond à la commande. `WHO` fournit
@@ -178,6 +180,34 @@ client> MOVE 3                serveur> EVT MOVE 0 alice 3 0  puis EVT BOARD ... 
 Limites : lignes de 1023 caractères au maximum (au-delà : `ERR ligne_trop_longue` et
 déconnexion), 64 clients simultanés.
 
+## Sauvegarde (persistance entre les sessions)
+
+L'Elo de chaque joueur survit à la déconnexion et au redémarrage du serveur. Il est retrouvé
+grâce au **pseudo** (casse ignorée) : quand on fait `NICK alice`, on reprend l'Elo qu'alice avait
+la dernière fois, sinon on part de 600.
+
+Tout est dans un fichier texte au format CSV, facile à lire et à corriger à la main :
+
+```
+pseudo,elo
+alice,616
+bob,584
+```
+
+- Le fichier est `joueurs.csv` dans le dossier où le serveur est lancé. On choisit un autre
+  emplacement avec la variable d'environnement `AWALE_DONNEES` :
+  `AWALE_DONNEES=/chemin/scores.csv bin/awale_serveur 5000`.
+- Il est chargé au démarrage (le serveur affiche le nombre de joueurs chargés) et réécrit à
+  chaque changement d'Elo : commande `ELO nombre` ou fin de partie, forfait compris.
+  L'écriture passe par un fichier temporaire puis un renommage : un serveur tué en plein
+  milieu ne laisse jamais un fichier à moitié écrit.
+- Un fichier absent n'est pas une erreur (premier lancement). Les lignes invalides (pas de
+  virgule, pseudo interdit, nombre faux, doublon) sont ignorées. Si le fichier ne peut pas
+  être écrit, le serveur le signale sur sa sortie d'erreur et continue sans sauvegarder.
+- Les tests utilisent un fichier temporaire : ils ne touchent jamais à ton `joueurs.csv`.
+- Limite : un pseudo n'est pas un mot de passe, donc quiconque choisit « alice » hérite de
+  l'Elo d'alice. Seul l'Elo est sauvegardé (pas les parties en cours).
+
 ## Règle du jeu retenue
 
 Règle « officielle » : capture de 2 ou 3 graines dans le camp adverse avec remontée, case
@@ -194,9 +224,10 @@ src/clients.[ch]     table des clients, états, pseudos, envoi de messages
 src/parties.[ch]     parties en cours (32 au maximum), diffusion aux joueurs et observateurs
 src/protocole.[ch]   table des commandes + dispatcher
 src/commandes.[ch]   une fonction par commande
+src/sauvegarde.[ch]  Elo des joueurs dans un fichier CSV (chargé au démarrage, réécrit à chaque changement)
 src/server.[ch]      portabilité réseau, socket d’écoute + boucle select (structure de la V2)
 src/client.c         client : select sur le clavier et la socket, affichage du plateau
-tests/               test_awale.c (moteur), test_proto.sh, test_parties.sh, test_elo.sh
+tests/               test_awale.c (moteur), test_proto.sh, test_parties.sh, test_elo.sh, test_chat.sh, test_sauvegarde.sh
 windows.ps1, installer-windows.ps1, serveur.cmd, client.cmd   lancement sous Windows
 ```
 
@@ -218,7 +249,7 @@ serveur plein, forfait à la déconnexion, défi interrompu par un départ, `SIG
 - IPv4 seulement, pas de chiffrement, le pseudo n'est pas un mot de passe.
 - Règle de répétition d'Awalé non gérée.
 - Un défi n'expire pas : on le retire avec `CANCEL`.
-- Une partie n'est pas reprise après une déconnexion (forfait immédiat).
+- Une partie n'est pas reprise après une déconnexion (forfait immédiat) ; seul l'Elo est sauvegardé.
 - Les 32 parties maximales occupent les 64 places : le refus `serveur_plein` d'`ACCEPT` ne
   peut pas se produire avec les tailles actuelles (pas testé).
 

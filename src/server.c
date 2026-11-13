@@ -25,6 +25,7 @@
 #include "protocole.h"
 #include "commandes.h"
 #include "parties.h"
+#include "sauvegarde.h"
 #include <time.h>
 
 /* mis a 1 par CTRL-C : la boucle se termine proprement */
@@ -234,6 +235,10 @@ static void app(int port)
 {
   clients_init();
   parties_init();
+  const char *fichier = getenv("AWALE_DONNEES");
+  if (fichier == NULL || fichier[0] == '\0')
+    fichier = SAUVEGARDE_DEFAUT;
+  printf("[serveur] %d joueur(s) charge(s) depuis %s\n", sauvegarde_charger(fichier), fichier);
   SOCKET sock = init_connection(port);
   if (sock == INVALID_SOCKET)
     exit(1);

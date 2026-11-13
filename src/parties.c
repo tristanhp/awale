@@ -8,6 +8,7 @@
 #include <limits.h>
 #include "parties.h"
 #include "clients.h"
+#include "sauvegarde.h"
 
 Partie parties[MAX_PARTIES];
 
@@ -124,6 +125,9 @@ void partie_terminer(int p, int gagnant, const char *raison)
   double nouveau_b = (double)clients[b].elo - variation;
   clients[a].elo = nouveau_a > INT_MAX ? INT_MAX : (nouveau_a < INT_MIN ? INT_MIN : (int)nouveau_a);
   clients[b].elo = nouveau_b > INT_MAX ? INT_MAX : (nouveau_b < INT_MIN ? INT_MIN : (int)nouveau_b);
+  /* l'Elo survit a la deconnexion et au redemarrage du serveur */
+  sauvegarde_enregistrer(clients[a].name, clients[a].elo);
+  sauvegarde_enregistrer(clients[b].name, clients[b].elo);
 
   char nom[PSEUDO_MAX + 4];
   if (gagnant == 0 || gagnant == 1)
