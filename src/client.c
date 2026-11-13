@@ -18,6 +18,8 @@
 #include "server.h"
 #include "tampon.h"
 #include "awale.h"
+#include <termios.h>
+#include <strings.h>
 
 /* ecrit toute la chaine sur la socket (write peut n'ecrire qu'une partie) ; 0 si OK, -1 sinon */
 static int ecrire_tout(int fd, const char *data, size_t len)
@@ -34,6 +36,66 @@ static int ecrire_tout(int fd, const char *data, size_t len)
     }
     fait += (size_t)n;
   }
+  return 0;
+}
+
+/* lit un mot de passe au clavier SANS l'afficher ; 0 si OK, -1 sinon */
+static int lire_mot_de_passe(const char *invite, char *mdp, size_t taille)
+{
+  struct termios normal, muet;
+  if (tcgetattr(STDIN_FILENO, &normal) < 0)
+    return -1;
+  muet = normal;
+  muet.c_lflag &= ~(tcflag_t)ECHO;
+  tcsetattr(STDIN_FILENO, TCSAFLUSH, &muet);
+  printf("%s", invite);
+  fflush(stdout);
+
+  size_t n = 0;
+  char c;
+  while (read(STDIN_FILENO, &c, 1) == 1 && c != '\n')
+    if (n + 1 < taille)
+      mdp[n++] = c;
+  mdp[n] = '\0';
+
+  tcsetattr(STDIN_FILENO, TCSAFLUSH, &normal);
+  printf("\n");
+  return 0;
+}
+
+/* "LOGIN pseudo" ou "REGISTER pseudo" tape sans mot de passe dans un vrai terminal : on le
+ * demande ici sans l'afficher, puis on l'ajoute a la ligne. 0 = envoyer la ligne, -1 = abandon.
+ * (Si le mot de passe est deja sur la ligne, ou si l'entree n'est pas un terminal : rien a faire.) */
+static int completer_identifiants(char *ligne, size_t taille)
+{
+  int inscription = strncasecmp(ligne, "REGISTER ", 9) == 0;
+  if (!isatty(STDIN_FILENO) || (!inscription && strncasecmp(ligne, "LOGIN ", 6) != 0))
+    return 0;
+  char *pseudo = ligne + (inscription ? 9 : 6);
+  while (*pseudo == ' ')
+    pseudo++;
+  if (*pseudo == '\0' || strchr(pseudo, ' ') != NULL)
+    return 0; /* pas de pseudo, ou mot de passe deja donne : le serveur jugera */
+
+  char mdp[256], confirmation[256];
+  if (lire_mot_de_passe("Mot de passe : ", mdp, sizeof(mdp)) < 0)
+    return 0;
+  if (inscription)
+  {
+    if (lire_mot_de_passe("Confirmez le mot de passe : ", confirmation, sizeof(confirmation)) < 0 ||
+        strcmp(mdp, confirmation) != 0)
+    {
+      printf("Les deux mots de passe different : inscription annulee.\n");
+      return -1;
+    }
+  }
+  if (strlen(ligne) + 1 + strlen(mdp) + 1 > taille)
+  {
+    printf("Ligne trop longue.\n");
+    return -1;
+  }
+  strcat(ligne, " ");
+  strcat(ligne, mdp);
   return 0;
 }
 
@@ -59,6 +121,11 @@ static const char *texte_erreur(const char *code)
       {"coup_illegal", "coup illegal (case vide, ou il faut nourrir l'adversaire)"},
       {"partie_inconnue", "aucune partie en cours avec ce numero (voir GAMES)"},
       {"trop_observateurs", "cette partie a deja le maximum d'observateurs"},
+      {"pseudo_protege", "ce pseudo a un compte : utilisez LOGIN pseudo (mot de passe)"},
+      {"mdp_invalide", "mot de passe invalide (6 a 64 caracteres visibles, sans espace)"},
+      {"identifiants_invalides", "pseudo ou mot de passe incorrect"},
+      {"trop_d_echecs", "trop d'echecs, deconnexion"},
+      {"sauvegarde_impossible", "le serveur n'a pas pu enregistrer le compte"},
       {"serveur_plein", "le serveur est plein"},
       {"ligne_trop_longue", "ligne trop longue, deconnexion"},
   };
@@ -341,6 +408,8 @@ int main(int argc, char **argv)
       int erreur_ecriture = 0;
       while (!erreur_ecriture && entree_extraire_ligne(&depuis_clavier, ligne, sizeof(ligne)))
       {
+        if (completer_identifiants(ligne, sizeof(ligne)) < 0)
+          continue;
         strcat(ligne, "\n"); /* ligne fait au plus ENTREE_MAX - 1 caracteres : la place existe */
         if (ecrire_tout(sockfd, ligne, strlen(ligne)) < 0)
           erreur_ecriture = 1;

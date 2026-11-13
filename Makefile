@@ -23,7 +23,7 @@ endif
 # -MMD -MP : genere les dependances sur les .h (un .h modifie recompile les .c concernes)
 CFLAGS += -MMD -MP
 
-SERVEUR_OBJS = $(addprefix $(OBJDIR)/, server.o clients.o protocole.o commandes.o parties.o sauvegarde.o tampon.o awale.o)
+SERVEUR_OBJS = $(addprefix $(OBJDIR)/, server.o clients.o protocole.o commandes.o parties.o sauvegarde.o mdp.o tampon.o awale.o)
 CLIENT_OBJS  = $(addprefix $(OBJDIR)/, client.o tampon.o awale.o)
 
 all: $(BINDIR)/awale_serveur $(BINDIR)/awale_client
@@ -47,8 +47,12 @@ debug:
 tests/bin/test_awale: tests/test_awale.c src/awale.c src/awale.h | tests/bin
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ tests/test_awale.c src/awale.c
 
-test: all tests/bin/test_awale
+tests/bin/test_mdp: tests/test_mdp.c src/mdp.c src/mdp.h | tests/bin
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ tests/test_mdp.c src/mdp.c
+
+test: all tests/bin/test_awale tests/bin/test_mdp
 	tests/bin/test_awale
+	tests/bin/test_mdp
 	BIN=$(BINDIR) tests/test_proto.sh
 	BIN=$(BINDIR) tests/test_parties.sh
 	BIN=$(BINDIR) bash tests/test_elo.sh

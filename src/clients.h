@@ -30,6 +30,8 @@ typedef struct
   SOCKET sock; /* -1 = case libre */
   int etat; /* un seul des bits ETAT_* */
   int elo;
+  int compte; /* 1 = connecte a un compte (REGISTER/LOGIN) : son Elo est sauvegarde */
+  int echecs; /* mauvais mots de passe sur cette connexion */
   char name[PSEUDO_MAX + 1]; /* pseudo */
   TamponEntree in;
   FileSortie out;

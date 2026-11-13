@@ -238,7 +238,7 @@ static void app(int port)
   const char *fichier = getenv("AWALE_DONNEES");
   if (fichier == NULL || fichier[0] == '\0')
     fichier = SAUVEGARDE_DEFAUT;
-  printf("[serveur] %d joueur(s) charge(s) depuis %s\n", sauvegarde_charger(fichier), fichier);
+  printf("[serveur] %d compte(s) charge(s) depuis %s\n", sauvegarde_charger(fichier), fichier);
   SOCKET sock = init_connection(port);
   if (sock == INVALID_SOCKET)
     exit(1);

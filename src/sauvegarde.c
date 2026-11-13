@@ -1,4 +1,4 @@
-/* Persistance de l'Elo dans un fichier CSV (voir sauvegarde.h) */
+/* Comptes des joueurs dans un fichier CSV (voir sauvegarde.h) */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,17 +7,20 @@
 #include <limits.h>
 #include <errno.h>
 #include "sauvegarde.h"
+#include "mdp.h"
 #include "clients.h" /* PSEUDO_MAX, pseudo_valide */
 
-#define MAX_SAUVEGARDES 4096
+#define MAX_COMPTES 4096
 
 typedef struct
 {
   char pseudo[PSEUDO_MAX + 1];
   int elo;
-} Enregistrement;
+  char sel[SEL_HEX];
+  char hash[HASH_HEX];
+} Compte;
 
-static Enregistrement table[MAX_SAUVEGARDES];
+static Compte table[MAX_COMPTES];
 static int nb = 0;
 static char chemin[1024] = "";
 
@@ -38,38 +41,48 @@ int sauvegarde_charger(const char *fichier)
   if (f == NULL)
     return 0; /* premier lancement : pas encore de fichier */
 
-  char ligne[256];
+  char ligne[512];
   while (fgets(ligne, sizeof(ligne), f) != NULL)
   {
     ligne[strcspn(ligne, "\r\n")] = '\0';
-    char *virgule = strchr(ligne, ',');
-    if (virgule == NULL)
-      continue; /* ligne sans virgule : ignoree */
-    *virgule = '\0';
+
+    /* pseudo,elo,sel,hachage */
+    char *champ[4];
+    char *p = ligne;
+    int n = 0;
+    while (n < 4)
+    {
+      champ[n++] = p;
+      char *virgule = strchr(p, ',');
+      if (virgule == NULL)
+        break;
+      *virgule = '\0';
+      p = virgule + 1;
+    }
+    if (n != 4 || strchr(champ[3], ',') != NULL)
+      continue; /* en-tete, ancien format sans mot de passe, ligne abimee : ignoree */
 
     char *fin;
     errno = 0;
-    long elo = strtol(virgule + 1, &fin, 10);
-    /* ignore l'en-tete "pseudo,elo", les pseudos invalides, les nombres faux et les doublons */
-    if (!pseudo_valide(ligne) || fin == virgule + 1 || *fin != '\0' || errno == ERANGE ||
-        elo < INT_MIN || elo > INT_MAX || trouver(ligne) >= 0 || nb >= MAX_SAUVEGARDES)
+    long elo = strtol(champ[1], &fin, 10);
+    if (!pseudo_valide(champ[0]) || fin == champ[1] || *fin != '\0' || errno == ERANGE ||
+        elo < INT_MIN || elo > INT_MAX || !mdp_est_hex(champ[2], SEL_HEX - 1) ||
+        !mdp_est_hex(champ[3], HASH_HEX - 1) || trouver(champ[0]) >= 0 || nb >= MAX_COMPTES)
       continue;
 
-    snprintf(table[nb].pseudo, sizeof(table[nb].pseudo), "%.16s", ligne);
+    snprintf(table[nb].pseudo, sizeof(table[nb].pseudo), "%.16s", champ[0]);
     table[nb].elo = (int)elo;
+    snprintf(table[nb].sel, sizeof(table[nb].sel), "%s", champ[2]);
+    snprintf(table[nb].hash, sizeof(table[nb].hash), "%s", champ[3]);
     nb++;
   }
   fclose(f);
   return nb;
 }
 
-int sauvegarde_chercher(const char *pseudo, int *elo)
+int sauvegarde_compte_existe(const char *pseudo)
 {
-  int k = trouver(pseudo);
-  if (k < 0)
-    return 0;
-  *elo = table[k].elo;
-  return 1;
+  return trouver(pseudo) >= 0;
 }
 
 /* reecrit tout le fichier : on ecrit dans un fichier temporaire puis on le renomme, pour ne
@@ -82,9 +95,9 @@ static int ecrire_fichier(void)
   FILE *f = fopen(temporaire, "w");
   if (f == NULL)
     return -1;
-  fprintf(f, "pseudo,elo\n");
+  fprintf(f, "pseudo,elo,sel,hachage\n");
   for (int k = 0; k < nb; k++)
-    fprintf(f, "%s,%d\n", table[k].pseudo, table[k].elo);
+    fprintf(f, "%s,%d,%s,%s\n", table[k].pseudo, table[k].elo, table[k].sel, table[k].hash);
   if (fclose(f) != 0)
   {
     remove(temporaire);
@@ -98,21 +111,52 @@ static int ecrire_fichier(void)
   return 0;
 }
 
-int sauvegarde_enregistrer(const char *pseudo, int elo)
+int sauvegarde_creer_compte(const char *pseudo, const char *mdp, int elo)
 {
-  if (chemin[0] == '\0')
-    return -1; /* sauvegarde_charger n'a pas ete appelee */
+  if (chemin[0] == '\0' || nb >= MAX_COMPTES || trouver(pseudo) >= 0)
+    return -1;
 
+  Compte *c = &table[nb];
+  snprintf(c->pseudo, sizeof(c->pseudo), "%.16s", pseudo);
+  c->elo = elo;
+  mdp_nouveau_sel(c->sel);
+  mdp_hacher(mdp, c->sel, c->hash);
+  nb++;
+
+  if (ecrire_fichier() < 0)
+  {
+    nb--; /* pas de compte fantome : il disparaitrait au prochain redemarrage */
+    perror("[serveur] sauvegarde impossible");
+    return -1;
+  }
+  return 0;
+}
+
+int sauvegarde_verifier(const char *pseudo, const char *mdp, int *elo, char *nom)
+{
   int k = trouver(pseudo);
   if (k < 0)
   {
-    if (nb >= MAX_SAUVEGARDES)
-      return -1;
-    k = nb++;
-    snprintf(table[k].pseudo, sizeof(table[k].pseudo), "%s", pseudo);
+    /* compte inconnu : on fait quand meme le calcul, pour qu'on ne puisse pas deviner
+     * quels pseudos existent en mesurant le temps de reponse */
+    char sel[SEL_HEX] = "00000000000000000000000000000000";
+    char hash[HASH_HEX];
+    mdp_hacher(mdp, sel, hash);
+    return 0;
   }
-  table[k].elo = elo;
+  if (!mdp_verifier(mdp, table[k].sel, table[k].hash))
+    return 0;
+  *elo = table[k].elo;
+  snprintf(nom, PSEUDO_MAX + 1, "%s", table[k].pseudo);
+  return 1;
+}
 
+int sauvegarde_enregistrer_elo(const char *pseudo, int elo)
+{
+  int k = trouver(pseudo);
+  if (k < 0)
+    return -1;
+  table[k].elo = elo;
   if (ecrire_fichier() < 0)
   {
     perror("[serveur] sauvegarde impossible");

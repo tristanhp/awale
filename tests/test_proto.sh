@@ -25,7 +25,7 @@ verifier "alice voit arriver bob" attendre $A "EVT JOIN bob"
 echo "== liste des joueurs =="
 envoyer $B "WHO\n";               verifier "WHO contient alice et bob" attendre $B "OK WHO"
 [[ $LIGNE == *alice:libre* && $LIGNE == *bob:libre* ]] && verifier "WHO : alice:libre bob:libre" true || verifier "WHO : alice:libre bob:libre" false
-envoyer $B "HELP\n";              verifier "HELP liste les commandes" attendre $B "OK HELP NICK WHO HELP QUIT"
+envoyer $B "HELP\n";              verifier "HELP liste les commandes" attendre $B "OK HELP NICK REGISTER LOGIN WHO HELP QUIT"
 
 echo "== commandes invalides =="
 envoyer $A "DANSER\n";            verifier "commande inconnue" attendre $A "ERR commande_inconnue"

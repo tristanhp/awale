@@ -17,7 +17,7 @@ Le serveur tourne sous Linux, et sous Windows sans WSL (voir « Compilation »).
 | 5 | Observateurs (`GAMES`, `WATCH`, `UNWATCH`) | fait |
 | 6 | Classement Elo (`ELO`, mise à jour en fin de partie) | fait |
 | 7 | Chat entre adversaires (`CHAT`) | fait |
-| 8 | Sauvegarde de l'Elo entre les sessions (fichier CSV, par pseudo) | fait |
+| 8 | Comptes (pseudo + mot de passe) et sauvegarde de l'Elo entre les sessions (fichier CSV) | fait |
 | 9 à 10 | Bio, mode privé, sauvegarde et reprise des parties | non réalisé |
 
 ## Compilation
@@ -92,7 +92,9 @@ réponses du serveur et les événements (arrivée d'un joueur...) **même penda
 
 | Commande | Effet |
 |---|---|
-| `NICK pseudo` | S'enregistrer. Pseudo de 1 à 16 caractères parmi `A-Z a-z 0-9 _`, unique (la casse est ignorée). |
+| `REGISTER pseudo mdp` | Créer un compte et s'y connecter. Pseudo de 1 à 16 caractères parmi `A-Z a-z 0-9 _`, unique (la casse est ignorée) ; mot de passe de 6 à 64 caractères visibles, sans espace. |
+| `LOGIN pseudo mdp` | Se connecter à son compte : on retrouve son Elo. |
+| `NICK pseudo` | Jouer en **invité** (sans compte, Elo non sauvegardé). Refusé si le pseudo a un compte (`pseudo_protege`). |
 | `WHO` | Liste des joueurs en ligne et leur état. |
 | `ELO` | Afficher son Elo. |
 | `ELO nombre` | Fixer librement son Elo à un entier (exemple : `ELO 900`). |
@@ -143,7 +145,8 @@ Protocole Elo : `OK ELO <pseudo> <elo>` répond à la commande. `WHO` fournit
 Messages d'erreur : `pseudo_pris`, `pseudo_invalide`, `deja_inscrit`, `syntaxe`,
 `commande_inconnue`, `etat_invalide` (par exemple `WHO` avant `NICK`, ou `MOVE` hors partie),
 `serveur_plein`, `ligne_trop_longue`, `joueur_inconnu`, `defi_soi`, `joueur_occupe`,
-`pas_votre_tour`, `coup_illegal`, `partie_inconnue`, `trop_observateurs`.
+`pas_votre_tour`, `coup_illegal`, `partie_inconnue`, `trop_observateurs`, `pseudo_protege`,
+`mdp_invalide`, `identifiants_invalides`, `trop_d_echecs`, `sauvegarde_impossible`.
 
 ## Protocole (pour `nc` et pour le développement)
 
@@ -180,33 +183,49 @@ client> MOVE 3                serveur> EVT MOVE 0 alice 3 0  puis EVT BOARD ... 
 Limites : lignes de 1023 caractères au maximum (au-delà : `ERR ligne_trop_longue` et
 déconnexion), 64 clients simultanés.
 
-## Sauvegarde (persistance entre les sessions)
+## Comptes et sauvegarde (persistance entre les sessions)
 
-L'Elo de chaque joueur survit à la déconnexion et au redémarrage du serveur. Il est retrouvé
-grâce au **pseudo** (casse ignorée) : quand on fait `NICK alice`, on reprend l'Elo qu'alice avait
-la dernière fois, sinon on part de 600.
+Un joueur peut avoir un **compte** : un pseudo protégé par un mot de passe, qui conserve son Elo
+d'une session à l'autre.
 
-Tout est dans un fichier texte au format CSV, facile à lire et à corriger à la main :
+- `REGISTER alice monmotdepasse` crée le compte (Elo de départ : 600) et connecte.
+- `LOGIN alice monmotdepasse` (plus tard, même après un redémarrage du serveur) reconnecte et
+  redonne l'Elo d'alice. Le pseudo s'écrit comme à la création (alice et ALICE : même compte).
+- `NICK bob` reste possible pour jouer en **invité** : pas de mot de passe, Elo à 600 et
+  non sauvegardé. Un pseudo qui a un compte ne peut pas être pris par un invité.
+- Dans un vrai terminal, `LOGIN alice` et `REGISTER alice` (sans mot de passe) le demandent
+  **sans l'afficher** à l'écran (avec confirmation pour `REGISTER`). Avec `nc` ou un script, le
+  mot de passe se met sur la ligne.
+- Mauvais pseudo ou mauvais mot de passe : même réponse (`identifiants_invalides`), pour ne pas
+  révéler quels pseudos existent. Après 5 échecs sur une connexion, le serveur la ferme.
+
+Tout est dans un fichier texte au format CSV, une ligne par compte :
 
 ```
-pseudo,elo
-alice,616
-bob,584
+pseudo,elo,sel,hachage
+alice,616,3fa9c0...,9c1e72...
 ```
 
-- Le fichier est `joueurs.csv` dans le dossier où le serveur est lancé. On choisit un autre
-  emplacement avec la variable d'environnement `AWALE_DONNEES` :
-  `AWALE_DONNEES=/chemin/scores.csv bin/awale_serveur 5000`.
-- Il est chargé au démarrage (le serveur affiche le nombre de joueurs chargés) et réécrit à
-  chaque changement d'Elo : commande `ELO nombre` ou fin de partie, forfait compris.
-  L'écriture passe par un fichier temporaire puis un renommage : un serveur tué en plein
+- **Le mot de passe n'est jamais écrit en clair.** On stocke un hachage SHA-256 *salé* (16
+  octets aléatoires propres à chaque compte) et *itéré* 5000 fois : deux joueurs ayant le même
+  mot de passe ont des lignes différentes, et un fichier volé ne se déchiffre pas directement.
+  SHA-256 est écrit dans `src/mdp.c` (testé sur les vecteurs officiels), sans bibliothèque
+  externe, donc ça marche aussi sous Windows. Ce n'est pas bcrypt ou argon2, mais c'est suffisant
+  pour ce projet.
+- Le fichier est `joueurs.csv` dans le dossier où le serveur est lancé ; une autre
+  emplacement se choisit avec `AWALE_DONNEES=/chemin/scores.csv bin/awale_serveur 5000`. Il est
+  ignoré par git (il contient les hachages).
+- Il est chargé au démarrage (le serveur affiche le nombre de comptes chargés) et réécrit à
+  chaque création de compte ou changement d'Elo : commande `ELO nombre` ou fin de partie, forfait
+  compris. L'écriture passe par un fichier temporaire puis un renommage : un serveur tué en plein
   milieu ne laisse jamais un fichier à moitié écrit.
-- Un fichier absent n'est pas une erreur (premier lancement). Les lignes invalides (pas de
-  virgule, pseudo interdit, nombre faux, doublon) sont ignorées. Si le fichier ne peut pas
-  être écrit, le serveur le signale sur sa sortie d'erreur et continue sans sauvegarder.
+- Un fichier absent n'est pas une erreur. Les lignes invalides sont ignorées (l'ancien format
+  sans mot de passe aussi). Si le fichier ne peut pas être écrit, `REGISTER` répond
+  `sauvegarde_impossible` (pas de compte fantôme) et le serveur continue.
 - Les tests utilisent un fichier temporaire : ils ne touchent jamais à ton `joueurs.csv`.
-- Limite : un pseudo n'est pas un mot de passe, donc quiconque choisit « alice » hérite de
-  l'Elo d'alice. Seul l'Elo est sauvegardé (pas les parties en cours).
+- **Limite importante :** la connexion n'est pas chiffrée (pas de TLS). Le mot de passe circule
+  en clair sur le réseau, donc à n'utiliser que sur un réseau de confiance. Seul l'Elo est
+  sauvegardé (pas les parties en cours), et il n'y a pas de commande pour changer de mot de passe.
 
 ## Règle du jeu retenue
 
@@ -224,10 +243,11 @@ src/clients.[ch]     table des clients, états, pseudos, envoi de messages
 src/parties.[ch]     parties en cours (32 au maximum), diffusion aux joueurs et observateurs
 src/protocole.[ch]   table des commandes + dispatcher
 src/commandes.[ch]   une fonction par commande
-src/sauvegarde.[ch]  Elo des joueurs dans un fichier CSV (chargé au démarrage, réécrit à chaque changement)
+src/sauvegarde.[ch]  comptes des joueurs (pseudo, mot de passe haché, Elo) dans un fichier CSV
+src/mdp.[ch]         SHA-256, sel, hachage et vérification des mots de passe
 src/server.[ch]      portabilité réseau, socket d’écoute + boucle select (structure de la V2)
 src/client.c         client : select sur le clavier et la socket, affichage du plateau
-tests/               test_awale.c (moteur), test_proto.sh, test_parties.sh, test_elo.sh, test_chat.sh, test_sauvegarde.sh
+tests/               test_awale.c (moteur), test_mdp.c (SHA-256), test_proto.sh, test_parties.sh, test_elo.sh, test_chat.sh, test_sauvegarde.sh
 windows.ps1, installer-windows.ps1, serveur.cmd, client.cmd   lancement sous Windows
 ```
 
@@ -246,7 +266,7 @@ serveur plein, forfait à la déconnexion, défi interrompu par un départ, `SIG
 ## Limites connues
 
 - Une coupure silencieuse (câble débranché) n'est pas détectée : le client reste « en ligne ».
-- IPv4 seulement, pas de chiffrement, le pseudo n'est pas un mot de passe.
+- IPv4 seulement, pas de chiffrement de la connexion (le mot de passe circule en clair).
 - Règle de répétition d'Awalé non gérée.
 - Un défi n'expire pas : on le retire avec `CANCEL`.
 - Une partie n'est pas reprise après une déconnexion (forfait immédiat) ; seul l'Elo est sauvegardé.
