@@ -104,7 +104,7 @@ réponses du serveur et les événements (arrivée d'un joueur...) **même penda
 | `DECLINE` | Refuser le défi reçu. |
 | `CANCEL` | Retirer le défi qu'on a envoyé. |
 | `MOVE n` | Jouer la case `n` (1 à 6, de gauche à droite dans son camp). |
-| `CHAT message` | Envoyer un message prive a son adversaire pendant la partie (997 caracteres maximum). |
+| `CHAT message` | Envoyer un message privé à son adversaire pendant la partie (997 caractères maximum). |
 | `BOARD` | Réafficher le plateau de sa partie. |
 | `GAMES` | Liste des parties en cours (`numéro : joueurs`). |
 | `WATCH n` | Regarder la partie `n` (joueur libre seulement) : plateau courant, puis chaque coup. |
@@ -119,9 +119,15 @@ adversaire gagne par forfait. Un joueur a au plus un défi en cours ; il ne peut
 Un observateur ne peut ni jouer ni défier ni être défié (jusqu'à `UNWATCH`) ; la fin de la partie
 lui est annoncée et il redevient libre. Une partie accepte 8 observateurs au plus.
 
+`CHAT Salut !` affiche chez l'adversaire « Message de alice : Salut ! » et chez l'expéditeur
+« Message envoyé : Salut ! ». Les observateurs ne reçoivent pas le chat. Protocole :
+`EVT CHAT <pseudo> <message>` pour l'adversaire, `OK CHAT <message>` pour l'expéditeur. Un
+message vide ou contenant des caractères de contrôle est refusé (`ERR syntaxe`), un message trop
+long renvoie `ERR message_trop_long`.
+
 États affichés par `WHO` : `libre`, `defi_envoye`, `defi_recu`, `en_partie`, `observe`.
 
-Chaque connexion commence à **600 Elo**. L'Elo des autres joueurs s'affiche
+Un nouveau joueur (compte ou invité) commence à **600 Elo**. L'Elo des autres joueurs s'affiche
 entre parenthèses uniquement dans `WHO` et les messages de défi envoyé ou reçu.
 La commande `ELO` répond uniquement au joueur qui l'utilise ; aucune annonce Elo
 n'est diffusée lors des connexions, modifications ou fins de partie.
@@ -146,7 +152,8 @@ Messages d'erreur : `pseudo_pris`, `pseudo_invalide`, `deja_inscrit`, `syntaxe`,
 `commande_inconnue`, `etat_invalide` (par exemple `WHO` avant `NICK`, ou `MOVE` hors partie),
 `serveur_plein`, `ligne_trop_longue`, `joueur_inconnu`, `defi_soi`, `joueur_occupe`,
 `pas_votre_tour`, `coup_illegal`, `partie_inconnue`, `trop_observateurs`, `pseudo_protege`,
-`mdp_invalide`, `identifiants_invalides`, `trop_d_echecs`, `sauvegarde_impossible`.
+`mdp_invalide`, `identifiants_invalides`, `trop_d_echecs`, `sauvegarde_impossible`,
+`message_trop_long`.
 
 ## Protocole (pour `nc` et pour le développement)
 
@@ -277,9 +284,3 @@ serveur plein, forfait à la déconnexion, défi interrompu par un départ, `SIG
 
 Une branche par étape (`etape-3-defis`...), merge dans `main` quand `make test-debug` passe.
 Les tests doivent rester verts avant chaque merge.
-
-La commande `CHAT Salut !` affiche chez l'adversaire `Message de alice : Salut !`.
-L'expediteur voit `Message envoye : Salut !`. Les observateurs ne recoivent pas le chat.
-Protocole : `EVT CHAT <pseudo> <message>` pour l'adversaire, `OK CHAT <message>` pour l'expediteur.
-Un message vide ou contenant des controles de terminal est refuse (`ERR syntaxe`),
-un message trop long renvoie `ERR message_trop_long`.
