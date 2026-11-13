@@ -14,6 +14,7 @@ void cmd_quit(int i, char *args); /* QUIT : quitter proprement */
 void cmd_challenge(int i, char *args); /* CHALLENGE pseudo : defier un joueur libre */
 void cmd_accept(int i, char *args);    /* ACCEPT : accepter le defi recu, la partie commence */
 void cmd_move(int i, char *args);      /* MOVE n : jouer la case n (1 a 6) */
+void cmd_chat(int i, char *args);      /* CHAT message : parler a son adversaire */
 void cmd_board(int i, char *args);     /* BOARD : reafficher le plateau */
 void cmd_games(int i, char *args);     /* GAMES : parties en cours */
 void cmd_watch(int i, char *args);     /* WATCH id : observer une partie */

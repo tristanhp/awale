@@ -198,6 +198,30 @@ void cmd_board(int i, char *args)
   partie_envoyer_plateau(clients[i].partie, i);
 }
 
+void cmd_chat(int i, char *args)
+{
+  if (*args == '\0')
+  {
+    client_envoyer(i, "ERR syntaxe");
+    return;
+  }
+  /* Le pseudo et le prefixe doivent tenir dans le tampon du client destinataire. */
+  if (strlen(args) > ENTREE_MAX - PSEUDO_MAX - 11)
+  {
+    client_envoyer(i, "ERR message_trop_long");
+    return;
+  }
+  /* Refuse les controles du terminal (echappements ANSI, retour chariot...). */
+  for (const unsigned char *p = (const unsigned char *)args; *p; p++)
+    if (*p < 32 || *p == 127)
+    {
+      client_envoyer(i, "ERR syntaxe");
+      return;
+    }
+  client_envoyer(clients[i].adversaire, "EVT CHAT %s %s", clients[i].name, args);
+  client_envoyer(i, "OK CHAT %s", args);
+}
+
 void cmd_games(int i, char *args)
 {
   (void)args;

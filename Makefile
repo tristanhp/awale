@@ -52,6 +52,7 @@ test: all tests/bin/test_awale
 	BIN=$(BINDIR) tests/test_proto.sh
 	BIN=$(BINDIR) tests/test_parties.sh
 	BIN=$(BINDIR) bash tests/test_elo.sh
+	BIN=$(BINDIR) bash tests/test_chat.sh
 
 test-debug:
 	$(MAKE) BUILD=debug test

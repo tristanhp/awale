@@ -98,6 +98,7 @@ réponses du serveur et les événements (arrivée d'un joueur...) **même penda
 | `DECLINE` | Refuser le défi reçu. |
 | `CANCEL` | Retirer le défi qu'on a envoyé. |
 | `MOVE n` | Jouer la case `n` (1 à 6, de gauche à droite dans son camp). |
+| `CHAT message` | Envoyer un message prive a son adversaire pendant la partie (997 caracteres maximum). |
 | `BOARD` | Réafficher le plateau de sa partie. |
 | `GAMES` | Liste des parties en cours (`numéro : joueurs`). |
 | `WATCH n` | Regarder la partie `n` (joueur libre seulement) : plateau courant, puis chaque coup. |
@@ -218,3 +219,9 @@ serveur plein, forfait à la déconnexion, défi interrompu par un départ, `SIG
 
 Une branche par étape (`etape-3-defis`...), merge dans `main` quand `make test-debug` passe.
 Les tests doivent rester verts avant chaque merge.
+
+La commande `CHAT Salut !` affiche chez l'adversaire `Message de alice : Salut !`.
+L'expediteur voit `Message envoye : Salut !`. Les observateurs ne recoivent pas le chat.
+Protocole : `EVT CHAT <pseudo> <message>` pour l'adversaire, `OK CHAT <message>` pour l'expediteur.
+Un message vide ou contenant des controles de terminal est refuse (`ERR syntaxe`),
+un message trop long renvoie `ERR message_trop_long`.

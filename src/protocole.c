@@ -19,6 +19,7 @@ static const Commande commandes[] = {
     {"CHALLENGE", cmd_challenge, ETAT_LIBRE},
     {"ACCEPT", cmd_accept, ETAT_DEFI_RECU},
     {"MOVE", cmd_move, ETAT_EN_PARTIE},
+    {"CHAT", cmd_chat, ETAT_EN_PARTIE},
     {"BOARD", cmd_board, ETAT_EN_PARTIE | ETAT_OBSERVATEUR},
     {"GAMES", cmd_games, ETAT_INSCRIT},
     {"WATCH", cmd_watch, ETAT_LIBRE},

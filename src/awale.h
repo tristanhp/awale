@@ -11,9 +11,9 @@
 
 #include <stddef.h>
 
-#define AWALE_CASES 12
-#define AWALE_PAR_JOUEUR 6
-#define AWALE_GRAINES_DEPART 4
+#define AWALE_CASES 4
+#define AWALE_PAR_JOUEUR 2
+#define AWALE_GRAINES_DEPART 2
 #define AWALE_SCORE_VICTOIRE 2 /* temporaire pour les essais ; valeur normale : 25 */
 #define AWALE_NUL (-1)          /* valeur de gagnant en cas de match nul */
 

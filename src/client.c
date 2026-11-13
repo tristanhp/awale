@@ -49,6 +49,7 @@ static const char *texte_erreur(const char *code)
       {"pseudo_invalide", "pseudo invalide (1 a 16 caracteres : lettres, chiffres, _)"},
       {"deja_inscrit", "vous avez deja un pseudo"},
       {"syntaxe", "commande mal formee"},
+      {"message_trop_long", "message trop long (997 caracteres maximum)"},
       {"commande_inconnue", "commande inconnue (tapez HELP)"},
       {"etat_invalide", "commande impossible dans votre situation actuelle"},
       {"joueur_inconnu", "aucun joueur connecte sous ce pseudo"},
@@ -206,6 +207,17 @@ static void afficher_message(char *ligne)
   }
   else if (strncmp(ligne, "OK HELP ", 8) == 0)
     printf("Commandes disponibles : %s\n", ligne + 8);
+  else if (strncmp(ligne, "EVT CHAT ", 9) == 0)
+  {
+    char *message = strchr(ligne + 9, ' ');
+    if (message != NULL)
+    {
+      *message++ = '\0';
+      printf("\nMessage de %s : %s\n", ligne + 9, message);
+    }
+  }
+  else if (strncmp(ligne, "OK CHAT ", 8) == 0)
+    printf("Message envoye : %s\n", ligne + 8);
   else if (strcmp(ligne, "OK QUIT") == 0)
     printf("Au revoir.\n");
   else if (strncmp(ligne, "EVT HELLO ", 10) == 0)
