@@ -238,8 +238,7 @@ alice,616,3fa9c0...,9c1e72...
 
 Règle « officielle » : capture de 2 ou 3 graines dans le camp adverse avec remontée, case
 d'origine sautée à partir de 12 graines, grand chelem sans capture, obligation de nourrir,
-fin à plus de 24 graines ou quand le joueur au trait ne peut plus jouer. Détail, exemples et
-variantes écartées : [`docs/regles-awale.md`](docs/regles-awale.md).
+fin à plus de 24 graines ou quand le joueur au trait ne peut plus jouer.
 
 ## Architecture (résumé)
 

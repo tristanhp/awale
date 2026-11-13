@@ -8,6 +8,6 @@ tests/bin/
 *.tmp
 parties_sauvegardees/
 .outils/
-docs/superpowers/
+docs/
 *.zip
 joueurs.csv
