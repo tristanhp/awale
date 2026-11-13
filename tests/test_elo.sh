@@ -13,12 +13,12 @@ sans_annonce_elo() {
 }
 
 ouvrir D; attendre "$D" 'EVT HELLO'
-envoyer "$D" 'NICK observateur\n'; attendre "$D" 'OK NICK observateur'
+envoyer "$D" 'REGISTER observateur motdepasse1\n'; attendre "$D" 'OK NICK observateur'
 
 ouvrir A; attendre "$A" 'EVT HELLO'
 envoyer "$A" 'ELO 900\n'
 verifier 'ELO avant inscription refuse' attendre "$A" 'ERR etat_invalide'
-envoyer "$A" 'NICK alice\n'; attendre "$A" 'OK NICK alice'
+envoyer "$A" 'REGISTER alice motdepasse1\n'; attendre "$A" 'OK NICK alice'
 envoyer "$A" 'ELO\n'
 verifier 'Elo initial 600' attendre "$A" 'OK ELO alice 600'
 envoyer "$A" 'ELO -200\n'
@@ -30,7 +30,7 @@ for valeur in abc '900 extra' 999999999999999999999999; do
 done
 envoyer "$A" 'ELO 600\n'; attendre "$A" 'OK ELO alice 600'
 ouvrir B; attendre "$B" 'EVT HELLO'
-envoyer "$B" 'NICK bob\n'; attendre "$B" 'OK NICK bob'
+envoyer "$B" 'REGISTER bob motdepasse1\n'; attendre "$B" 'OK NICK bob'
 envoyer "$A" 'CHALLENGE bob\n'
 verifier 'defi recu avec Elo du defiant' attendre "$B" 'EVT CHALLENGE alice (600)'
 verifier 'defi envoye avec Elo de la cible' attendre "$A" 'OK CHALLENGE bob (600)'
@@ -42,7 +42,7 @@ verifier 'victoire contre Elo egal : +16' attendre "$A" 'OK ELO alice 616'
 verifier 'fin de partie sans annonce Elo aux autres' sans_annonce_elo "$D"
 
 ouvrir C; attendre "$C" 'EVT HELLO'
-envoyer "$C" 'NICK carol\n'; attendre "$C" 'OK NICK carol'
+envoyer "$C" 'REGISTER carol motdepasse1\n'; attendre "$C" 'OK NICK carol'
 envoyer "$C" 'ELO 1000\n'; attendre "$C" 'OK ELO carol 1000'
 envoyer "$A" 'ELO 600\n'; attendre "$A" 'OK ELO alice 600'
 envoyer "$A" 'CHALLENGE carol\n'; attendre "$C" 'EVT CHALLENGE alice'
@@ -54,7 +54,7 @@ envoyer "$A" 'WHO\n'
 verifier 'WHO contient Elo' attendre "$A" 'alice:libre:629'
 
 ouvrir F; attendre "$F" 'EVT HELLO'
-envoyer "$F" 'NICK favori\n'; attendre "$F" 'OK NICK favori'
+envoyer "$F" 'REGISTER favori motdepasse1\n'; attendre "$F" 'OK NICK favori'
 envoyer "$F" 'ELO 3000\n'; attendre "$F" 'OK ELO favori 3000'
 envoyer "$A" 'ELO 600\n'; attendre "$A" 'OK ELO alice 600'
 envoyer "$A" 'CHALLENGE favori\n'; attendre "$F" 'EVT CHALLENGE alice'

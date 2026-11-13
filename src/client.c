@@ -112,7 +112,7 @@ static const char *texte_erreur(const char *code)
       {"deja_inscrit", "vous avez deja un pseudo"},
       {"syntaxe", "commande mal formee"},
       {"message_trop_long", "message trop long (997 caracteres maximum)"},
-      {"commande_inconnue", "commande inconnue (tapez HELP)"},
+      {"commande_inconnue", "commande inconnue (tapez HELP ; pour entrer : REGISTER ou LOGIN)"},
       {"etat_invalide", "commande impossible dans votre situation actuelle"},
       {"joueur_inconnu", "aucun joueur connecte sous ce pseudo"},
       {"defi_soi", "vous ne pouvez pas vous defier vous-meme"},
@@ -121,7 +121,6 @@ static const char *texte_erreur(const char *code)
       {"coup_illegal", "coup illegal (case vide, ou il faut nourrir l'adversaire)"},
       {"partie_inconnue", "aucune partie en cours avec ce numero (voir GAMES)"},
       {"trop_observateurs", "cette partie a deja le maximum d'observateurs"},
-      {"pseudo_protege", "ce pseudo a un compte : utilisez LOGIN pseudo (mot de passe)"},
       {"mdp_invalide", "mot de passe invalide (6 a 64 caracteres visibles, sans espace)"},
       {"identifiants_invalides", "pseudo ou mot de passe incorrect"},
       {"trop_d_echecs", "trop d'echecs, deconnexion"},
@@ -195,15 +194,8 @@ static void afficher_message(char *ligne)
   }
   else if (strncmp(ligne, "OK NICK ", 8) == 0)
   {
-    /* "OK NICK pseudo" (compte) ou "OK NICK pseudo invite" */
-    char mode[16] = "";
-    if (sscanf(ligne + 8, "%31s %15s", mon_pseudo, mode) < 1)
-      return;
-    printf("Vous etes inscrit sous le pseudo %s\n", mon_pseudo);
-    if (strcmp(mode, "invite") == 0)
-      printf("ATTENTION : vous jouez en invite, votre Elo ne sera PAS sauvegarde.\n"
-             "Pour le conserver : quittez (QUIT) puis REGISTER %s (nouveau compte) ou LOGIN %s.\n",
-             mon_pseudo, mon_pseudo);
+    snprintf(mon_pseudo, sizeof(mon_pseudo), "%.31s", ligne + 8);
+    printf("Vous etes connecte sous le pseudo %s\n", mon_pseudo);
   }
   else if (strncmp(ligne, "OK ELO ", 7) == 0)
   {

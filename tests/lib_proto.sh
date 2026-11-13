@@ -59,6 +59,16 @@ verifier() {
   else NB_KO=$((NB_KO + 1)); echo "  ECHEC $desc"; fi
 }
 
+# mot de passe commun a tous les comptes crees par les tests
+MDP=motdepasse1
+# inscrire VAR pseudo : ouvre une connexion et entre dans le compte "pseudo" (cree s'il n'existe pas encore)
+inscrire() {
+  ouvrir "$1"; attendre "${!1}" "EVT HELLO"
+  envoyer "${!1}" "REGISTER $2 $MDP\n"
+  attendre "${!1}" "OK NICK $2" && return 0
+  envoyer "${!1}" "LOGIN $2 $MDP\n"; attendre "${!1}" "OK NICK $2"
+}
+
 # arrete le serveur par CTRL-C et verifie le code de sortie et l'absence d'erreur memoire
 arreter_serveur() {
   kill -INT "$SERVEUR"; wait "$SERVEUR"; local code=$?

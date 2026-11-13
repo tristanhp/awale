@@ -126,10 +126,8 @@ void partie_terminer(int p, int gagnant, const char *raison)
   clients[a].elo = nouveau_a > INT_MAX ? INT_MAX : (nouveau_a < INT_MIN ? INT_MIN : (int)nouveau_a);
   clients[b].elo = nouveau_b > INT_MAX ? INT_MAX : (nouveau_b < INT_MIN ? INT_MIN : (int)nouveau_b);
   /* l'Elo survit a la deconnexion et au redemarrage du serveur */
-  if (clients[a].compte)
-    sauvegarde_enregistrer_elo(clients[a].name, clients[a].elo);
-  if (clients[b].compte)
-    sauvegarde_enregistrer_elo(clients[b].name, clients[b].elo);
+  sauvegarde_enregistrer_elo(clients[a].name, clients[a].elo);
+  sauvegarde_enregistrer_elo(clients[b].name, clients[b].elo);
 
   char nom[PSEUDO_MAX + 4];
   if (gagnant == 0 || gagnant == 1)

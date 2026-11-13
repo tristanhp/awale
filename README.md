@@ -47,7 +47,7 @@ Dans le premier client, saisir `REGISTER alice` (le mot de passe est demandé), 
 `CHALLENGE bob` une fois Bob connecté. Dans le second, saisir `REGISTER bob`, puis `ACCEPT`.
 Jouer avec `MOVE 1` à `MOVE 6`, quitter avec `QUIT`, arrêter le serveur avec Ctrl-C.
 Les fois suivantes, `LOGIN alice` redonne l'Elo d'alice (fichier `joueurs.csv` à la racine
-du projet). **Avec `NICK alice` on joue en invité : l'Elo n'est pas sauvegardé.**
+du projet).
 
 Autre serveur ou autre port : `.\serveur.cmd -Port 6000` et
 `.\client.cmd -Hote localhost -Port 6000`.
@@ -94,9 +94,8 @@ réponses du serveur et les événements (arrivée d'un joueur...) **même penda
 
 | Commande | Effet |
 |---|---|
-| `REGISTER pseudo mdp` | Créer un compte et s'y connecter. Pseudo de 1 à 16 caractères parmi `A-Z a-z 0-9 _`, unique (la casse est ignorée) ; mot de passe de 6 à 64 caractères visibles, sans espace. |
+| `REGISTER pseudo mdp` | Créer un compte et s'y connecter (**un compte est obligatoire pour jouer**). Pseudo de 1 à 16 caractères parmi `A-Z a-z 0-9 _`, unique (la casse est ignorée) ; mot de passe de 6 à 64 caractères visibles, sans espace. |
 | `LOGIN pseudo mdp` | Se connecter à son compte : on retrouve son Elo. |
-| `NICK pseudo` | Jouer en **invité** (sans compte, Elo non sauvegardé). Refusé si le pseudo a un compte (`pseudo_protege`). |
 | `WHO` | Liste des joueurs en ligne et leur état. |
 | `ELO` | Afficher son Elo. |
 | `ELO nombre` | Fixer librement son Elo à un entier (exemple : `ELO 900`). |
@@ -129,7 +128,7 @@ long renvoie `ERR message_trop_long`.
 
 États affichés par `WHO` : `libre`, `defi_envoye`, `defi_recu`, `en_partie`, `observe`.
 
-Un nouveau joueur (compte ou invité) commence à **600 Elo**. L'Elo des autres joueurs s'affiche
+Un nouveau compte commence à **600 Elo**. L'Elo des autres joueurs s'affiche
 entre parenthèses uniquement dans `WHO` et les messages de défi envoyé ou reçu.
 La commande `ELO` répond uniquement au joueur qui l'utilise ; aucune annonce Elo
 n'est diffusée lors des connexions, modifications ou fins de partie.
@@ -151,9 +150,9 @@ Protocole Elo : `OK ELO <pseudo> <elo>` répond à la commande. `WHO` fournit
 `EVT CHALLENGE` contiennent le pseudo suivi de `(elo)`.
 
 Messages d'erreur : `pseudo_pris`, `pseudo_invalide`, `deja_inscrit`, `syntaxe`,
-`commande_inconnue`, `etat_invalide` (par exemple `WHO` avant `NICK`, ou `MOVE` hors partie),
+`commande_inconnue`, `etat_invalide` (par exemple `WHO` avant `LOGIN`, ou `MOVE` hors partie),
 `serveur_plein`, `ligne_trop_longue`, `joueur_inconnu`, `defi_soi`, `joueur_occupe`,
-`pas_votre_tour`, `coup_illegal`, `partie_inconnue`, `trop_observateurs`, `pseudo_protege`,
+`pas_votre_tour`, `coup_illegal`, `partie_inconnue`, `trop_observateurs`,
 `mdp_invalide`, `identifiants_invalides`, `trop_d_echecs`, `sauvegarde_impossible`,
 `message_trop_long`.
 
@@ -163,7 +162,7 @@ Un message = une ligne terminée par `\n` (`\r\n` accepté). Le serveur répond 
 `ERR code`, et envoie des événements `EVT ...` à tout moment.
 
 ```
-client> NICK alice            serveur> OK NICK alice
+client> REGISTER alice mdp1234 serveur> OK NICK alice   (ou LOGIN alice mdp1234)
 client> WHO                   serveur> OK WHO alice:libre:600 bob:libre:600
                               serveur> EVT JOIN bob        (quand bob arrive)
                               serveur> EVT LEAVE bob       (quand bob part)
@@ -194,14 +193,13 @@ déconnexion), 64 clients simultanés.
 
 ## Comptes et sauvegarde (persistance entre les sessions)
 
-Un joueur peut avoir un **compte** : un pseudo protégé par un mot de passe, qui conserve son Elo
-d'une session à l'autre.
+Chaque joueur a un **compte** (obligatoire) : un pseudo protégé par un mot de passe, qui conserve
+son Elo d'une session à l'autre. Tant qu'on n'est pas connecté, seules `REGISTER`, `LOGIN`,
+`HELP` et `QUIT` sont acceptées ; il n'y a pas de mode invité.
 
 - `REGISTER alice monmotdepasse` crée le compte (Elo de départ : 600) et connecte.
 - `LOGIN alice monmotdepasse` (plus tard, même après un redémarrage du serveur) reconnecte et
   redonne l'Elo d'alice. Le pseudo s'écrit comme à la création (alice et ALICE : même compte).
-- `NICK bob` reste possible pour jouer en **invité** : pas de mot de passe, Elo à 600 et
-  non sauvegardé. Un pseudo qui a un compte ne peut pas être pris par un invité.
 - Dans un vrai terminal, `LOGIN alice` et `REGISTER alice` (sans mot de passe) le demandent
   **sans l'afficher** à l'écran (avec confirmation pour `REGISTER`). Avec `nc` ou un script, le
   mot de passe se met sur la ligne.

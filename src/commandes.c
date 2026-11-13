@@ -12,49 +12,14 @@
 #include "mdp.h"
 #include "parties.h"
 
-/* Fin commune de NICK, REGISTER et LOGIN : le client i devient un joueur inscrit */
-static void inscrire_client(int i, const char *pseudo, int compte, int elo)
+/* Fin commune de REGISTER et LOGIN : le client i devient un joueur inscrit */
+static void inscrire_client(int i, const char *pseudo, int elo)
 {
   snprintf(clients[i].name, sizeof(clients[i].name), "%s", pseudo);
   clients[i].etat = ETAT_LIBRE;
-  clients[i].compte = compte;
   clients[i].elo = elo;
-  /* un invite le sait des la reponse : son Elo ne sera pas sauvegarde */
-  client_envoyer(i, compte ? "OK NICK %s" : "OK NICK %s invite", clients[i].name);
+  client_envoyer(i, "OK NICK %s", clients[i].name);
   clients_diffuser(i, "EVT JOIN %s", clients[i].name);
-}
-
-/* NICK pseudo : joueur invite, sans compte (son Elo n'est pas sauvegarde) */
-void cmd_nick(int i, char *args)
-{
-  if (clients[i].etat != ETAT_CONNECTE)
-  {
-    client_envoyer(i, "ERR deja_inscrit");
-    return;
-  }
-  if (args[0] == '\0')
-  {
-    client_envoyer(i, "ERR syntaxe");
-    return;
-  }
-  /* un pseudo contenant un espace ou un caractere special est refuse ici */
-  if (!pseudo_valide(args))
-  {
-    client_envoyer(i, "ERR pseudo_invalide");
-    return;
-  }
-  /* un pseudo qui a un compte ne peut pas etre pris par un invite (sinon : usurpation) */
-  if (sauvegarde_compte_existe(args))
-  {
-    client_envoyer(i, "ERR pseudo_protege");
-    return;
-  }
-  if (clients_chercher_pseudo(args) >= 0)
-  {
-    client_envoyer(i, "ERR pseudo_pris");
-    return;
-  }
-  inscrire_client(i, args, 0, 600);
 }
 
 /* decoupe "pseudo mdp" : retourne 0 si on a bien exactement deux mots */
@@ -71,7 +36,7 @@ static int separer_identifiants(char *args, char **pseudo, char **mdp)
   return (**mdp == '\0' || strchr(*mdp, ' ') != NULL) ? -1 : 0;
 }
 
-/* REGISTER pseudo mdp : cree un compte (l'Elo sera sauvegarde) et s'y connecte */
+/* REGISTER pseudo mdp : cree un compte et s'y connecte */
 void cmd_register(int i, char *args)
 {
   if (clients[i].etat != ETAT_CONNECTE)
@@ -105,7 +70,7 @@ void cmd_register(int i, char *args)
     client_envoyer(i, "ERR sauvegarde_impossible");
     return;
   }
-  inscrire_client(i, pseudo, 1, 600);
+  inscrire_client(i, pseudo, 600);
 }
 
 #define MAX_ECHECS 5 /* mauvais mots de passe tolerés par connexion */
@@ -144,7 +109,7 @@ void cmd_login(int i, char *args)
     return;
   }
   /* le pseudo est ecrit comme a la creation du compte, pas comme tape (alice et ALICE : meme compte) */
-  inscrire_client(i, nom, 1, elo);
+  inscrire_client(i, nom, elo);
 }
 
 void cmd_elo(int i, char *args)
@@ -160,8 +125,7 @@ void cmd_elo(int i, char *args)
       return;
     }
     clients[i].elo = (int)valeur;
-    if (clients[i].compte)
-      sauvegarde_enregistrer_elo(clients[i].name, clients[i].elo);
+    sauvegarde_enregistrer_elo(clients[i].name, clients[i].elo);
   }
   client_envoyer(i, "OK ELO %s %d", clients[i].name, clients[i].elo);
 }

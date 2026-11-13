@@ -6,8 +6,6 @@ source "$(dirname "$0")/lib_proto.sh"
 
 # ---- utilitaires propres aux parties ----
 
-# inscrire VAR pseudo : ouvre une connexion et s'inscrit
-inscrire() { ouvrir "$1"; attendre "${!1}" "EVT HELLO"; envoyer "${!1}" "NICK $2\n"; attendre "${!1}" "OK NICK $2"; }
 
 # etat_de FD pseudo etat : 0 si WHO (demande sur FD) donne pseudo:etat
 etat_de() { envoyer "$1" "WHO\n"; attendre "$1" "OK WHO" && [[ $LIGNE == *" $2:$3"* ]]; }

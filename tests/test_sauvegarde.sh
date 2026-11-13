@@ -11,8 +11,6 @@ relancer_serveur() {
     sleep 0.1
   done
 }
-# invite VAR pseudo : NICK (sans compte) ; compte VAR pseudo mdp : REGISTER ; connecter VAR pseudo mdp : LOGIN
-invite()    { ouvrir "$1"; attendre "${!1}" "EVT HELLO"; envoyer "${!1}" "NICK $2\n"; attendre "${!1}" "OK NICK $2"; }
 compte()    { ouvrir "$1"; attendre "${!1}" "EVT HELLO"; envoyer "${!1}" "REGISTER $2 $3\n"; attendre "${!1}" "OK NICK $2"; }
 connecter() { ouvrir "$1"; attendre "${!1}" "EVT HELLO"; envoyer "${!1}" "LOGIN $2 $3\n"; attendre "${!1}" "OK NICK $2"; }
 # reponse_a FD "commande" "texte" : 0 si la commande recoit une reponse contenant ce texte
@@ -36,11 +34,9 @@ verifier "ligne du fichier : pseudo,elo,sel,hachage" grep -Eq '^alice,600,[0-9a-
 verifier "le mot de passe n'est jamais ecrit en clair" bash -c "! grep -q secret1 '$DONNEES'"
 ouvrir B; attendre $B "EVT HELLO"
 verifier "REGISTER d'un pseudo en ligne" reponse_a $B "REGISTER alice autre123" "ERR pseudo_pris"
-verifier "NICK sur un pseudo qui a un compte (en ligne)" reponse_a $B "NICK alice" "ERR pseudo_protege"
 verifier "LOGIN d'un compte deja en ligne (bon mot de passe)" reponse_a $B "LOGIN alice secret1" "ERR pseudo_pris"
 fermer A; sleep 0.3
 verifier "REGISTER d'un pseudo qui a un compte (casse ignoree)" reponse_a $B "REGISTER ALICE autre123" "ERR pseudo_pris"
-verifier "NICK sur un pseudo qui a un compte (hors ligne)" reponse_a $B "NICK Alice" "ERR pseudo_protege"
 
 echo "== connexion =="
 verifier "mauvais mot de passe" reponse_a $B "LOGIN alice mauvais1" "ERR identifiants_invalides"
@@ -57,21 +53,14 @@ verifier "5e echec : ERR trop_d_echecs" attendre $C "ERR trop_d_echecs"
 verifier "5e echec : connexion fermee" attendre_fermeture $C
 fermer B
 
-echo "== invite (NICK) : rien n'est sauvegarde =="
+echo "== le compte est obligatoire =="
 ouvrir H; attendre $H "EVT HELLO"
-envoyer $H "NICK hugo\n"
-verifier "NICK repond 'invite' (Elo non sauvegarde)" attendre $H "OK NICK hugo invite"
+verifier "NICK n'existe plus : commande inconnue" reponse_a $H "NICK gaston" "ERR commande_inconnue"
+verifier "sans compte, WHO est refuse" reponse_a $H "WHO" "ERR etat_invalide"
+verifier "sans compte, CHALLENGE est refuse" reponse_a $H "CHALLENGE alice" "ERR etat_invalide"
+verifier "sans compte, ELO est refuse" reponse_a $H "ELO 1500" "ERR etat_invalide"
+verifier "HELP ne propose que REGISTER et LOGIN pour entrer" reponse_a $H "HELP" "OK HELP REGISTER LOGIN HELP QUIT"
 fermer H
-ouvrir H; attendre $H "EVT HELLO"; envoyer $H "REGISTER hugo2 secret1\n"; attendre $H "OK NICK hugo2"
-verifier "REGISTER ne repond pas 'invite'" bash -c "[[ '$LIGNE' != *invite* ]]"
-fermer H
-invite G "gaston"
-envoyer $G "ELO 1500\n"; attendre $G "OK ELO gaston 1500"
-verifier "l'Elo d'un invite n'est pas ecrit" bash -c "! grep -q gaston '$DONNEES'"
-fermer G; sleep 0.2
-invite G "gaston"
-verifier "un invite qui revient repart a 600" elo_de $G gaston 600
-fermer G
 
 echo "== l'Elo suit le compte, meme apres un redemarrage =="
 connecter A "alice" "secret1"
@@ -92,7 +81,7 @@ SEL_A=$(grep '^alice,' "$DONNEES" | cut -d, -f3); HASH_A=$(grep '^alice,' "$DONN
 verifier "l'Elo change mais pas le mot de passe (sel et hachage inchanges)" test -n "$SEL_A" -a -n "$HASH_A"
 
 relancer_serveur
-verifier "le serveur annonce les comptes charges" grep -q "3 compte(s) charge(s)" "$LOG"
+verifier "le serveur annonce les comptes charges" grep -q "2 compte(s) charge(s)" "$LOG"
 ouvrir A; attendre $A "EVT HELLO"
 verifier "apres redemarrage : l'ancien mot de passe fonctionne" reponse_a $A "LOGIN alice secret1" "OK NICK alice"
 verifier "alice retrouve son Elo" elo_de $A alice "$ELO_A"
@@ -127,7 +116,7 @@ verifier "serveur vivant malgre les lignes invalides" serveur_vivant
 verifier "seules les lignes valides sont chargees (zoe, leo)" grep -q "2 compte(s) charge(s)" "$LOG"
 ouvrir A; attendre $A "EVT HELLO"
 verifier "compte a l'ancien format : inutilisable" reponse_a $A "LOGIN ancien secret1" "ERR identifiants_invalides"
-verifier "le pseudo de l'ancien format est libre" reponse_a $A "NICK ancien" "OK NICK ancien"
+verifier "le pseudo de l'ancien format est libre : REGISTER possible" reponse_a $A "REGISTER ancien secret1" "OK NICK ancien"
 fermer A
 
 echo "== sauvegarde impossible =="
@@ -139,7 +128,7 @@ ouvrir A; attendre $A "EVT HELLO"
 verifier "REGISTER impossible a enregistrer : erreur claire" reponse_a $A "REGISTER alice secret1" "ERR sauvegarde_impossible"
 verifier "serveur toujours vivant" serveur_vivant
 verifier "pas de compte fantome" reponse_a $A "LOGIN alice secret1" "ERR identifiants_invalides"
-verifier "mais on peut jouer en invite" reponse_a $A "NICK alice" "OK NICK alice"
+verifier "sans sauvegarde possible, on ne peut pas entrer" reponse_a $A "WHO" "ERR etat_invalide"
 fermer A
 
 arreter_serveur

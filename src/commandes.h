@@ -6,7 +6,6 @@
 #ifndef COMMANDES_H
 #define COMMANDES_H
 
-void cmd_nick(int i, char *args); /* NICK pseudo : s'enregistrer */
 void cmd_register(int i, char *args); /* REGISTER pseudo mdp : creer un compte */
 void cmd_login(int i, char *args);    /* LOGIN pseudo mdp : se connecter a son compte */
 void cmd_who(int i, char *args);  /* WHO : liste des joueurs en ligne */

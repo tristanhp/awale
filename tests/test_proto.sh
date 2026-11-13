@@ -9,23 +9,24 @@ source "$(dirname "$0")/lib_proto.sh"
 
 echo "== inscription =="
 ouvrir A; attendre $A "EVT HELLO"; verifier "message de bienvenue" true
-envoyer $A "WHO\n";               verifier "WHO avant NICK refuse" attendre $A "ERR etat_invalide"
-envoyer $A "NICK\n";              verifier "NICK sans pseudo : syntaxe" attendre $A "ERR syntaxe"
-envoyer $A "NICK a b\n";          verifier "pseudo avec espace invalide" attendre $A "ERR pseudo_invalide"
-envoyer $A "NICK a-b\n";          verifier "pseudo avec tiret invalide" attendre $A "ERR pseudo_invalide"
-envoyer $A "NICK abcdefghijklmnopq\n"; verifier "pseudo de 17 caracteres invalide" attendre $A "ERR pseudo_invalide"
-envoyer $A "nick alice\n";        verifier "commande en minuscules acceptee" attendre $A "OK NICK alice"
-envoyer $A "NICK autre\n";        verifier "deuxieme NICK refuse" attendre $A "ERR deja_inscrit"
+envoyer $A "WHO\n";               verifier "WHO avant connexion refuse" attendre $A "ERR etat_invalide"
+envoyer $A "NICK alice\n";         verifier "NICK n'existe plus (compte obligatoire)" attendre $A "ERR commande_inconnue"
+envoyer $A "REGISTER\n";          verifier "REGISTER sans pseudo : syntaxe" attendre $A "ERR syntaxe"
+envoyer $A "REGISTER a b motdepasse1\n"; verifier "pseudo avec espace : syntaxe" attendre $A "ERR syntaxe"
+envoyer $A "REGISTER a-b motdepasse1\n";          verifier "pseudo avec tiret invalide" attendre $A "ERR pseudo_invalide"
+envoyer $A "REGISTER abcdefghijklmnopq motdepasse1\n"; verifier "pseudo de 17 caracteres invalide" attendre $A "ERR pseudo_invalide"
+envoyer $A "register alice motdepasse1\n"; verifier "commande en minuscules acceptee" attendre $A "OK NICK alice"
+envoyer $A "REGISTER autre motdepasse1\n"; verifier "deuxieme inscription refusee" attendre $A "ERR deja_inscrit"
 
 ouvrir B; attendre $B "EVT HELLO"
-envoyer $B "NICK ALICE\n";        verifier "pseudo deja pris (casse ignoree)" attendre $B "ERR pseudo_pris"
-envoyer $B "NICK bob\n";          verifier "bob s'inscrit" attendre $B "OK NICK bob"
+envoyer $B "REGISTER ALICE motdepasse1\n";        verifier "pseudo deja pris (casse ignoree)" attendre $B "ERR pseudo_pris"
+envoyer $B "REGISTER bob motdepasse1\n"; verifier "bob s'inscrit" attendre $B "OK NICK bob"
 verifier "alice voit arriver bob" attendre $A "EVT JOIN bob"
 
 echo "== liste des joueurs =="
 envoyer $B "WHO\n";               verifier "WHO contient alice et bob" attendre $B "OK WHO"
 [[ $LIGNE == *alice:libre* && $LIGNE == *bob:libre* ]] && verifier "WHO : alice:libre bob:libre" true || verifier "WHO : alice:libre bob:libre" false
-envoyer $B "HELP\n";              verifier "HELP liste les commandes" attendre $B "OK HELP NICK REGISTER LOGIN WHO HELP QUIT"
+envoyer $B "HELP\n";              verifier "HELP liste les commandes" attendre $B "OK HELP REGISTER LOGIN WHO HELP QUIT"
 
 echo "== commandes invalides =="
 envoyer $A "DANSER\n";            verifier "commande inconnue" attendre $A "ERR commande_inconnue"
@@ -35,8 +36,8 @@ envoyer $A "WHO\r\n";             verifier "fin de ligne \\r\\n acceptee" attend
 
 echo "== flux TCP : lignes coupees et rafales =="
 ouvrir C; attendre $C "EVT HELLO"
-envoyer $C "NI"; sleep 0.2; envoyer $C "CK ca"; sleep 0.2; envoyer $C "rol\nWH"; sleep 0.2
-verifier "NICK coupe en 3 morceaux" attendre $C "OK NICK carol"
+envoyer $C "REGI"; sleep 0.2; envoyer $C "STER ca"; sleep 0.2; envoyer $C "rol motdepasse1\nWH"; sleep 0.2
+verifier "REGISTER coupe en 3 morceaux" attendre $C "OK NICK carol"
 envoyer $C "O\n";                 verifier "WHO coupe entre deux envois" attendre $C "OK WHO"
 envoyer $C "WHO\nWHO\nHELP\nDANSER\n"
 verifier "rafale : 1re reponse" attendre $C "OK WHO"
@@ -58,20 +59,20 @@ envoyer $C "QUIT\n";              verifier "QUIT : OK QUIT" attendre $C "OK QUIT
 verifier "QUIT : connexion fermee" attendre_fermeture $C
 verifier "alice voit partir carol" attendre $A "EVT LEAVE carol"
 # depart brutal : fermeture sans QUIT
-ouvrir E; attendre $E "EVT HELLO"; envoyer $E "NICK eve\n"; attendre $E "OK NICK eve"
+ouvrir E; attendre $E "EVT HELLO"; envoyer $E "REGISTER eve motdepasse1\n"; attendre $E "OK NICK eve"
 attendre $A "EVT JOIN eve"
 fermer E
 verifier "depart brutal : alice voit partir eve" attendre $A "EVT LEAVE eve"
 # l'ancien pseudo est de nouveau libre
-ouvrir F; attendre $F "EVT HELLO"; envoyer $F "NICK eve\n"
-verifier "pseudo reutilisable apres depart" attendre $F "OK NICK eve"
+ouvrir F; attendre $F "EVT HELLO"; envoyer $F "LOGIN eve motdepasse1\n"
+verifier "pseudo reutilisable apres depart (LOGIN)" attendre $F "OK NICK eve"
 fermer F; attendre $A "EVT LEAVE eve"
 # connexion fermee sans rien envoyer
 ouvrir G; fermer G; sleep 0.2
 verifier "client muet qui part : serveur vivant" serveur_vivant
 
 echo "== client lent qui ne lit jamais =="
-ouvrir H; attendre $H "EVT HELLO"; envoyer $H "NICK lent\n"; attendre $H "OK NICK lent"
+ouvrir H; attendre $H "EVT HELLO"; envoyer $H "REGISTER lent motdepasse1\n"; attendre $H "OK NICK lent"
 attendre $A "EVT JOIN lent"
 # 400000 commandes envoyees sans jamais lire les reponses : les files se remplissent
 yes HELP | head -n 400000 >&$H 2>/dev/null
@@ -97,8 +98,8 @@ ouvrir Z; verifier "nouvelles connexions acceptees apres liberation" attendre $Z
 fermer Z
 
 echo "== client interactif (awale_client) =="
-SORTIE=$(printf 'NICK zed\nWHO\nDANSER\n' | timeout 5 "$BIN/awale_client" 127.0.0.1 "$PORT")
-verifier "client : inscription affichee" grep -q "inscrit sous le pseudo zed" <<<"$SORTIE"
+SORTIE=$(printf 'REGISTER zed motdepasse1\nWHO\nDANSER\n' | timeout 5 "$BIN/awale_client" 127.0.0.1 "$PORT")
+verifier "client : inscription affichee" grep -q "connecte sous le pseudo zed" <<<"$SORTIE"
 verifier "client : liste des joueurs affichee" grep -q "  - zed (600) (libre)" <<<"$SORTIE"
 verifier "client : erreur traduite" grep -q "Erreur : commande inconnue" <<<"$SORTIE"
 verifier "client : se termine quand le serveur ferme" grep -q "Connexion fermee par le serveur" <<<"$SORTIE"

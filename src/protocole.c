@@ -11,7 +11,6 @@
 /* TABLE DES COMMANDES : pour en ajouter une, ajouter une ligne ici */
 static const Commande commandes[] = {
     /* nom        fonction     etats autorises */
-    {"NICK", cmd_nick, ETAT_TOUS},
     {"REGISTER", cmd_register, ETAT_TOUS},
     {"LOGIN", cmd_login, ETAT_TOUS},
     {"WHO", cmd_who, ETAT_INSCRIT},
