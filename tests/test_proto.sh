@@ -99,7 +99,7 @@ fermer Z
 echo "== client interactif (awale_client) =="
 SORTIE=$(printf 'NICK zed\nWHO\nDANSER\n' | timeout 5 "$BIN/awale_client" 127.0.0.1 "$PORT")
 verifier "client : inscription affichee" grep -q "inscrit sous le pseudo zed" <<<"$SORTIE"
-verifier "client : liste des joueurs affichee" grep -q "  - zed (libre)" <<<"$SORTIE"
+verifier "client : liste des joueurs affichee" grep -q "  - zed (600) (libre)" <<<"$SORTIE"
 verifier "client : erreur traduite" grep -q "Erreur : commande inconnue" <<<"$SORTIE"
 verifier "client : se termine quand le serveur ferme" grep -q "Connexion fermee par le serveur" <<<"$SORTIE"
 

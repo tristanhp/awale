@@ -104,7 +104,7 @@ verifier "les deux joueurs recoivent le meme plateau" test "$PLATEAU1" = "$PLATE
 # si Sud joue MOVE 1 : case 0 vide, cases 1 a 4 a 5 ; si Nord joue MOVE 1 : case 6 vide, cases 7 a 10 a 5
 if [ "$PREMIER" = alice ]; then ATTENDU="0 5 5 5 5 4 4 4 4 4 4 4"; else ATTENDU="4 4 4 4 4 4 0 5 5 5 5 4"; fi
 verifier "premier coup : graines semees dans les bonnes cases" test "$(cut -d' ' -f4-15 <<<"$PLATEAU1")" = "$ATTENDU"
-verifier "le tour passe a l'adversaire" test "${PLATEAU1##* }" = "$([ "$PREMIER" = alice ] && echo 1 || echo 0)"
+verifier "le tour passe a l'adversaire" test "$(cut -d' ' -f18 <<<"$PLATEAU1")" = "$([ "$PREMIER" = alice ] && echo 1 || echo 0)"
 envoyer $J1 "MOVE 2\n"; verifier "rejouer deux fois de suite" attendre $J1 "ERR pas_votre_tour"
 
 echo "== partie complete au hasard =="
