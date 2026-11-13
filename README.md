@@ -43,9 +43,11 @@ Ouvrir ensuite trois terminaux dans `awale` :
 .\client.cmd                        # terminal 3 : second joueur
 ```
 
-Dans le premier client, saisir `NICK alice`, puis `CHALLENGE bob` une fois Bob
-connecté. Dans le second, saisir `NICK bob`, puis `ACCEPT`. Jouer avec `MOVE 1`
-à `MOVE 6`, quitter avec `QUIT`, arrêter le serveur avec Ctrl-C.
+Dans le premier client, saisir `REGISTER alice` (le mot de passe est demandé), puis
+`CHALLENGE bob` une fois Bob connecté. Dans le second, saisir `REGISTER bob`, puis `ACCEPT`.
+Jouer avec `MOVE 1` à `MOVE 6`, quitter avec `QUIT`, arrêter le serveur avec Ctrl-C.
+Les fois suivantes, `LOGIN alice` redonne l'Elo d'alice (fichier `joueurs.csv` à la racine
+du projet). **Avec `NICK alice` on joue en invité : l'Elo n'est pas sauvegardé.**
 
 Autre serveur ou autre port : `.\serveur.cmd -Port 6000` et
 `.\client.cmd -Hote localhost -Port 6000`.

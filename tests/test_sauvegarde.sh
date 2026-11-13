@@ -58,6 +58,13 @@ verifier "5e echec : connexion fermee" attendre_fermeture $C
 fermer B
 
 echo "== invite (NICK) : rien n'est sauvegarde =="
+ouvrir H; attendre $H "EVT HELLO"
+envoyer $H "NICK hugo\n"
+verifier "NICK repond 'invite' (Elo non sauvegarde)" attendre $H "OK NICK hugo invite"
+fermer H
+ouvrir H; attendre $H "EVT HELLO"; envoyer $H "REGISTER hugo2 secret1\n"; attendre $H "OK NICK hugo2"
+verifier "REGISTER ne repond pas 'invite'" bash -c "[[ '$LIGNE' != *invite* ]]"
+fermer H
 invite G "gaston"
 envoyer $G "ELO 1500\n"; attendre $G "OK ELO gaston 1500"
 verifier "l'Elo d'un invite n'est pas ecrit" bash -c "! grep -q gaston '$DONNEES'"
@@ -85,7 +92,7 @@ SEL_A=$(grep '^alice,' "$DONNEES" | cut -d, -f3); HASH_A=$(grep '^alice,' "$DONN
 verifier "l'Elo change mais pas le mot de passe (sel et hachage inchanges)" test -n "$SEL_A" -a -n "$HASH_A"
 
 relancer_serveur
-verifier "le serveur annonce les comptes charges" grep -q "2 compte(s) charge(s)" "$LOG"
+verifier "le serveur annonce les comptes charges" grep -q "3 compte(s) charge(s)" "$LOG"
 ouvrir A; attendre $A "EVT HELLO"
 verifier "apres redemarrage : l'ancien mot de passe fonctionne" reponse_a $A "LOGIN alice secret1" "OK NICK alice"
 verifier "alice retrouve son Elo" elo_de $A alice "$ELO_A"

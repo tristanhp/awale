@@ -130,7 +130,7 @@ static void accepter_client(SOCKET sockfd)
 
   printf("[serveur] client %d connecte depuis %s\n", i, inet_ntoa(cli_addr.sin_addr));
   fflush(stdout);
-  client_envoyer(i, "EVT HELLO Bienvenue sur le serveur Awale. Tapez NICK <pseudo>, ou HELP.");
+  client_envoyer(i, "EVT HELLO Bienvenue sur le serveur Awale. REGISTER <pseudo> / LOGIN <pseudo> pour un compte (Elo sauvegarde), NICK <pseudo> pour jouer en invite, ou HELP.");
 }
 
 /* des octets sont arrives sur la socket du client i */

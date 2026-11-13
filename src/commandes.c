@@ -19,7 +19,8 @@ static void inscrire_client(int i, const char *pseudo, int compte, int elo)
   clients[i].etat = ETAT_LIBRE;
   clients[i].compte = compte;
   clients[i].elo = elo;
-  client_envoyer(i, "OK NICK %s", clients[i].name);
+  /* un invite le sait des la reponse : son Elo ne sera pas sauvegarde */
+  client_envoyer(i, compte ? "OK NICK %s" : "OK NICK %s invite", clients[i].name);
   clients_diffuser(i, "EVT JOIN %s", clients[i].name);
 }
 

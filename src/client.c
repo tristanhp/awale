@@ -195,8 +195,15 @@ static void afficher_message(char *ligne)
   }
   else if (strncmp(ligne, "OK NICK ", 8) == 0)
   {
-    snprintf(mon_pseudo, sizeof(mon_pseudo), "%.31s", ligne + 8);
+    /* "OK NICK pseudo" (compte) ou "OK NICK pseudo invite" */
+    char mode[16] = "";
+    if (sscanf(ligne + 8, "%31s %15s", mon_pseudo, mode) < 1)
+      return;
     printf("Vous etes inscrit sous le pseudo %s\n", mon_pseudo);
+    if (strcmp(mode, "invite") == 0)
+      printf("ATTENTION : vous jouez en invite, votre Elo ne sera PAS sauvegarde.\n"
+             "Pour le conserver : quittez (QUIT) puis REGISTER %s (nouveau compte) ou LOGIN %s.\n",
+             mon_pseudo, mon_pseudo);
   }
   else if (strncmp(ligne, "OK ELO ", 7) == 0)
   {
